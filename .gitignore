@@ -1,0 +1,25 @@
+# build output
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# logs
+logs/
+*.log
+
+# 本机私有配置（密码只留本机，不入库）
+application-local.yml
+*.local.yml
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
