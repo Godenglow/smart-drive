@@ -13,4 +13,26 @@
     <artifactId>common-api</artifactId>
     <name>common-api</name>
     <description>错误码、事件 DTO、通用响应；不放实体和 Mapper</description>
+
+    <dependencies>
+        <!-- 统一失败响应与全局异常处理需要 spring-web / spring-context；版本由 Boot BOM 管理 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <!-- 只为编译 Servlet 相关异常类型；provided 不向 WebFlux 的 gateway 传递 -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+    </dependencies>
 </project>

@@ -8,6 +8,22 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:localhost:8848}
+  datasource:
+    # 会话时区固定 UTC，created_at 等 CURRENT_TIMESTAMP 默认值即按 UTC 落库（规格文档 §5）
+    url: jdbc:mysql://localhost:3306/account_db?characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+    username: ${SMARTDRIVE_DB_USER:smartdrive}
+    password: ${SMARTDRIVE_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
 
 management:
   endpoints:

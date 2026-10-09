@@ -2,6 +2,7 @@ package com.smartdrive.common.api;
 
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.slf4j.MDC;
 
 /**
  * requestId 约定：网关与业务服务共用的请求头名、日志 MDC 键名与取值校验。
@@ -24,6 +25,12 @@ public final class RequestIds {
             return fromClient;
         }
         return UUID.randomUUID().toString();
+    }
+
+    /** 读取当前请求 MDC 中的 requestId，供失败响应回填；无 MDC 上下文时返回占位符 */
+    public static String current() {
+        String fromMdc = MDC.get(MDC_KEY);
+        return fromMdc != null ? fromMdc : "-";
     }
 
     private RequestIds() {
