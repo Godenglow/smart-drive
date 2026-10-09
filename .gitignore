@@ -20,6 +20,11 @@ application-local.yml
 .env
 .env.local
 
+# 本机工作文档与解读（不入库，仅本地保留）
+文档/
+程序解读/
+代驾项目开发文档.md
+
 # OS
 .DS_Store
 Thumbs.db
