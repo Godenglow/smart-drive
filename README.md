@@ -4,7 +4,7 @@
 
 - 规格文档：[代驾项目开发文档.md](./代驾项目开发文档.md)
 - 开发计划：[文档/每日开发计划.md](./文档/每日开发计划.md)
-- 当前进度：**Day 2 —— 工程骨架搭建完成**（Nacos 注册 Day 3，前端 Day 15）
+- 当前进度：**Day 3 —— Nacos 注册、Gateway 服务名路由与 requestId 透传完成**（账户接口 Day 4，前端 Day 15）
 
 ## 技术栈（已锁定基线）
 
@@ -33,8 +33,9 @@
 ## 构建与验证
 
 ```bat
-mvn.cmd clean compile         :: 编译全部模块
-mvn.cmd -DskipTests package   :: 打出可执行 jar（各模块 target/ 下）
+mvn.cmd clean compile                :: 编译全部模块
+mvn.cmd -DskipTests package          :: 打出可执行 jar（各模块 target/ 下）
+mvn.cmd clean install -DskipTests    :: 同时安装到本地仓库（IDE 或单模块构建前需要）
 ```
 
 ## 启动顺序（每天开工按此执行）
@@ -50,12 +51,15 @@ mvn.cmd -DskipTests package   :: 打出可执行 jar（各模块 target/ 下）
    - http://localhost:8082/actuator/health （driver-service）
    - http://localhost:8083/actuator/health （order-service）
    - http://localhost:8080/actuator/health （gateway）
-   - Nacos 控制台：http://localhost:8090/
+   - 经网关访问业务服务（验证注册与路由）：http://localhost:8080/actuator/account/health 、/actuator/driver/health 、/actuator/order/health
+   - Nacos 控制台：http://localhost:8090/ （服务列表应恰好是三个业务服务，gateway 只做发现不注册）
 
 > ⚠️ Nacos 3.x 控制台默认占 8080，与规格中 Gateway 的 8080 冲突。本机已在 `D:\devtools\nacos\nacos\conf\application.properties` 将 `nacos.console.port` 改为 **8090**（2026-10-05，验证记录见 [Day 2 工程搭建](./文档/Day2-工程搭建.md)）。Day 1 检查表里写的“控制台 8080”自此作废。
 
 ## 配置与安全约定
 
 - 密码 / 密钥只通过环境变量或本地忽略文件提供（`application-local.yml` 已在 `.gitignore`），不提交 Git。
+- 服务注册地址用 `NACOS_ADDR`（默认 `localhost:8848`）；业务服务经网关访问的路径保留 `/api` 前缀（网关不做 `StripPrefix`）。
+- 每个请求带 `X-Request-Id`：网关生成或透传并回写响应头，业务服务写入日志 MDC（日志格式含 `requestId`）。
 - Redis Key 一律使用 `smartdrive:` 前缀。
 - 数据库、MQ、Nacos 和内部服务端口不对公网开放，外部请求只从 Gateway 进入。

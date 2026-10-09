@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: driver-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:localhost:8848}
 
 management:
   endpoints:
@@ -13,3 +17,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name:-},%X{requestId:-}]"

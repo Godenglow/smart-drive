@@ -4,6 +4,48 @@ server:
 spring:
   application:
     name: gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:localhost:8848}
+        # 网关只做服务发现，不把自己注册进 Nacos
+        register-enabled: false
+    gateway:
+      server:
+        webflux:
+          routes:
+            # 业务接口：按服务名转发；路径中的 /api 前缀保留给服务内部，不做 StripPrefix
+            - id: account-service
+              uri: lb://account-service
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+            - id: driver-service
+              uri: lb://driver-service
+              predicates:
+                - Path=/api/drivers/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+            # 健康检查：经网关访问各业务服务 /actuator/health，只开放 health 这一条路径
+            - id: account-service-health
+              uri: lb://account-service
+              predicates:
+                - Path=/actuator/account/health
+              filters:
+                - SetPath=/actuator/health
+            - id: driver-service-health
+              uri: lb://driver-service
+              predicates:
+                - Path=/actuator/driver/health
+              filters:
+                - SetPath=/actuator/health
+            - id: order-service-health
+              uri: lb://order-service
+              predicates:
+                - Path=/actuator/order/health
+              filters:
+                - SetPath=/actuator/health
 
 management:
   endpoints:
