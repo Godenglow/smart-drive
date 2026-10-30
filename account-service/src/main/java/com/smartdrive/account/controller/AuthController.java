@@ -2,6 +2,8 @@ package com.smartdrive.account.controller;
 
 import com.smartdrive.account.dto.RegisterRequest;
 import com.smartdrive.account.dto.RegisterResponse;
+import com.smartdrive.account.dto.LoginRequest;
+import com.smartdrive.account.dto.LoginResponse;
 import com.smartdrive.account.service.AccountService;
 import com.smartdrive.common.api.ApiError;
 import com.smartdrive.common.api.Result;
@@ -17,10 +19,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 注册（公开）；登录在 Day 5 加入同一前缀 */
+/** 注册与登录公开接口 */
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "认证", description = "注册（Day 4）、登录（Day 5）")
+@Tag(name = "认证", description = "注册与登录")
 public class AuthController {
 
     private final AccountService accountService;
@@ -41,5 +43,16 @@ public class AuthController {
     })
     public Result<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         return Result.ok(new RegisterResponse(accountService.register(request)));
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "登录", description = "使用手机号和密码登录，返回有效期两小时的 JWT Bearer 令牌。")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "登录成功"),
+            @ApiResponse(responseCode = "400", description = "缺少手机号或密码", content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "手机号或密码错误", content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        return Result.ok(accountService.login(request.phone(), request.password()));
     }
 }
