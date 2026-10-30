@@ -6,21 +6,27 @@ import com.smartdrive.account.entity.Role;
 import com.smartdrive.account.mapper.AccountMapper;
 import com.smartdrive.common.api.ApiException;
 import com.smartdrive.common.api.ErrorCode;
+import com.smartdrive.common.api.auth.JwtCodec;
+import com.smartdrive.account.dto.LoginResponse;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-/** 账户注册与查询 */
+/** 账户注册、登录与查询 */
 @Service
 public class AccountService {
 
     private final AccountMapper accountMapper;
     private final PasswordEncoder passwordEncoder;
+    private final JwtCodec jwtCodec;
 
-    public AccountService(AccountMapper accountMapper, PasswordEncoder passwordEncoder) {
+    public AccountService(AccountMapper accountMapper, PasswordEncoder passwordEncoder, JwtCodec jwtCodec) {
         this.accountMapper = accountMapper;
         this.passwordEncoder = passwordEncoder;
+        this.jwtCodec = jwtCodec;
     }
 
     /**
@@ -46,8 +52,17 @@ public class AccountService {
         return account.getId();
     }
 
-    /** 按 userId 查账户：GET /api/users/me 的数据访问入口，授权（JWT）由 Day 5 接入 */
+    /** 按 userId 查账户：GET /api/users/me 的数据访问入口 */
     public Optional<Account> findById(long userId) {
         return Optional.ofNullable(accountMapper.selectById(userId));
+    }
+
+    public LoginResponse login(String phone, String password) {
+        Account account = accountMapper.selectByPhone(phone);
+        if (account == null || !passwordEncoder.matches(password, account.getPasswordHash())) {
+            throw new ApiException(ErrorCode.UNAUTHORIZED, "手机号或密码错误");
+        }
+        Instant expiresAt = Instant.now().plus(2, ChronoUnit.HOURS);
+        return new LoginResponse(jwtCodec.issue(account.getId(), account.getRole(), expiresAt), expiresAt, account.getRole());
     }
 }
