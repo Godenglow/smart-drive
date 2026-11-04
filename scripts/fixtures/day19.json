@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "amount": "50.00",
+  "pickup": {"lng": 118.8, "lat": 36.5},
+  "dropoff": {"lng": 118.82, "lat": 36.51},
+  "defaultDrivers": 10,
+  "defaultOrders": 10,
+  "requestTimeoutSeconds": 30,
+  "settleTimeoutSeconds": 60
+}

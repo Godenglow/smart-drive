@@ -5,6 +5,8 @@ web-app/dist/
 web-app/test-results/
 web-app/playwright-report/
 *.tsbuildinfo
+__pycache__/
+*.pyc
 
 # IDE
 .idea/

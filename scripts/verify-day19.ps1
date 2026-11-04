@@ -1,0 +1,65 @@
+#requires -Version 7.0
+$ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path $PSScriptRoot -Parent
+$localEnv = Join-Path $projectRoot '.env.local'
+if (Test-Path $localEnv) {
+    Get-Content $localEnv | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
+            if ($null -eq [Environment]::GetEnvironmentVariable($matches[1], 'Process')) {
+                [Environment]::SetEnvironmentVariable($matches[1], $matches[2].Trim().Trim('"').Trim("'"), 'Process')
+            }
+        }
+    }
+}
+if (-not $env:SMARTDRIVE_DB_PASSWORD) { throw 'SMARTDRIVE_DB_PASSWORD is required' }
+$flags = 'SMARTDRIVE_MYSQL_INTEGRATION','SMARTDRIVE_REDIS_INTEGRATION','SMARTDRIVE_RABBITMQ_INTEGRATION'
+$previous = @{}
+foreach ($flag in $flags) {
+    $previous[$flag] = [Environment]::GetEnvironmentVariable($flag, 'Process')
+    [Environment]::SetEnvironmentVariable($flag, 'true', 'Process')
+}
+$null = New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'logs/day19')
+$started = Get-Date
+$report = @{startedAt=$started.ToString('o'); passed=$false; tests=0; failures=0; errors=0; skipped=0; suites=@()}
+Push-Location $projectRoot
+try {
+    & python -m unittest discover -s scripts -p 'test_day19*.py' 2>&1 | Tee-Object 'logs/day19-tools.log'
+    if ($LASTEXITCODE -ne 0) { throw 'Day19 tooling tests failed' }
+    # Windows services hold target/*.jar open. Remove only generated XML, then reject stale/missing suites.
+    foreach ($oldReport in Get-ChildItem -Path '*/target/surefire-reports/TEST-*.xml') {
+        if (-not $oldReport.FullName.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Surefire report path is outside the workspace'
+        }
+        Remove-Item -LiteralPath $oldReport.FullName
+    }
+    & mvn.cmd -o test 2>&1 | Tee-Object 'logs/day19-maven.log'
+    if ($LASTEXITCODE -ne 0) { throw 'Maven regression failed' }
+    $reports = @(Get-ChildItem -Path '*/target/surefire-reports/TEST-*.xml')
+    if ($reports.Count -eq 0) { throw 'No Surefire reports generated' }
+    foreach ($file in $reports) {
+        [xml]$xml = Get-Content -LiteralPath $file.FullName -Raw
+        $suite = $xml.testsuite
+        if ($file.LastWriteTime -lt $started) { throw "Stale Surefire report: $($file.Name)" }
+        foreach ($field in 'tests','failures','errors','skipped') { $report[$field] += [int]$suite.$field }
+        $report.suites += @{name=[string]$suite.name; tests=[int]$suite.tests; skipped=[int]$suite.skipped}
+    }
+    foreach ($required in 'AccountMySqlIntegrationTest','OrderMySqlIntegrationTest','OrderAcceptanceMySqlIntegrationTest',
+                          'OrderFulfillmentMySqlIntegrationTest','OutboxMySqlIntegrationTest','MatchingIntegrationTest',
+                          'DriverRedisIntegrationTest','OutboxRabbitIntegrationTest') {
+        $found = @($report.suites | Where-Object { $_.name.EndsWith(".$required") })
+        if ($found.Count -ne 1 -or $found[0].tests -lt 1 -or $found[0].skipped -ne 0) { throw "Missing/skipped required suite: $required" }
+    }
+    if ($report.failures -ne 0 -or $report.errors -ne 0 -or $report.skipped -ne 0) { throw 'Real regression must have zero failures, errors and skips' }
+    & python scripts/verify-day19.py 2>&1 | Tee-Object 'logs/day19-live.log'
+    if ($LASTEXITCODE -ne 0) { throw 'Day19 HTTP/data/load verification failed' }
+    $live = Get-Content 'logs/day19-http-result.json' -Raw | ConvertFrom-Json
+    if (-not $live.passed -or -not $live.cleanupPassed) { throw 'Live verification or cleanup incomplete' }
+    $report.liveRunId = $live.runId
+    $report.passed = $true
+} finally {
+    $report.finishedAt = (Get-Date).ToString('o')
+    $report | ConvertTo-Json -Depth 8 | Set-Content 'logs/day19-verification.json' -Encoding utf8
+    foreach ($flag in $flags) { [Environment]::SetEnvironmentVariable($flag, $previous[$flag], 'Process') }
+    Pop-Location
+}
+$report | ConvertTo-Json -Depth 8
