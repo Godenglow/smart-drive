@@ -11,7 +11,9 @@ import platform
 import re
 import secrets
 import shutil
+import ssl
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -22,6 +24,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "scripts/fixtures/day19.json"
 CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 RUNS = ROOT / "logs/day19/runs"
+# Loading the Windows certificate store for every HTTP request serializes the load
+# generator even for plain HTTP. Share only the immutable TLS context; handlers
+# remain local to each thread, and urllib still closes each TCP connection.
+HTTP_SSL_CONTEXT = ssl.create_default_context()
+HTTP_CLIENT = threading.local()
 
 
 def require(condition, message):
@@ -89,7 +96,11 @@ def http(method, url, body=None, headers=None, timeout=None):
     if body is not None:
         request.add_header("Content-Type", "application/json")
     # Local requests must not be routed through workstation proxy settings.
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = getattr(HTTP_CLIENT, "opener", None)
+    if opener is None:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                             urllib.request.HTTPSHandler(context=HTTP_SSL_CONTEXT))
+        HTTP_CLIENT.opener = opener
     try:
         response = opener.open(request, timeout=timeout or CONFIG["requestTimeoutSeconds"])
     except urllib.error.HTTPError as error:
@@ -320,6 +331,7 @@ class Fixture:
                        "AND status='WAITING' AND driver_id IS NULL") == len(ids), "Reset failed")
 
     def validate_accounts(self):
+        known = []
         for account in self.data["accounts"]:
             if not account.get("id"):
                 # A registration may have committed while its HTTP response was lost.
@@ -328,9 +340,15 @@ class Fixture:
                 self.token(account)  # Password proof is required before adopting a pending registration.
             require(re.fullmatch(r"199\d{8}", account["phone"]) and account["role"] in ("PASSENGER", "DRIVER"),
                     "Invalid fixture account")
-            require(number(f"SELECT COUNT(*) FROM account_db.account WHERE id={int(account['id'])} "
-                           f"AND phone='{account['phone']}' AND role='{account['role']}' "
-                           "AND password_hash REGEXP '^[$]2[aby][$]'") == 1, "Fixture account/BCrypt mismatch")
+            known.append(account)
+        if known:
+            require(len({int(a["id"]) for a in known}) == len(known)
+                    and len({a["phone"] for a in known}) == len(known), "Duplicate fixture account")
+            identities = " OR ".join(f"(id={int(a['id'])} AND phone='{a['phone']}' AND role='{a['role']}')"
+                                     for a in known)
+            require(number("SELECT COUNT(*) FROM account_db.account WHERE (" + identities + ") "
+                           "AND password_hash REGEXP '^[$]2[aby][$]'") == len(known),
+                    "Fixture account/BCrypt mismatch")
 
     def cleanup(self):
         require(self.data, "No fixture manifest")
