@@ -15,6 +15,9 @@ public enum ErrorCode {
     NOT_FOUND(404, "资源不存在"),
     METHOD_NOT_ALLOWED(405, "请求方法不支持"),
     PHONE_ALREADY_EXISTS(409, "手机号已注册"),
+    DRIVER_OFFLINE(409, "司机未上线或在线状态已过期"),
+    NO_DRIVER_NEARBY(409, "附近暂无在线司机"),
+    SERVICE_UNAVAILABLE(503, "依赖服务暂不可用"),
     INTERNAL_ERROR(500, "服务内部错误");
 
     private final int httpStatus;

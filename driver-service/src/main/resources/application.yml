@@ -8,6 +8,20 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:localhost:8848}
+  datasource:
+    url: ${MYSQL_DRIVER_URL:jdbc:mysql://localhost:3306/driver_db?characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
+    username: ${SMARTDRIVE_DB_USER:smartdrive}
+    password: ${SMARTDRIVE_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:192.168.220.128}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
 
 management:
   endpoints:
@@ -21,3 +35,6 @@ management:
 logging:
   pattern:
     correlation: "[${spring.application.name:-},%X{requestId:-}]"
+
+smartdrive:
+  internal-token: ${SMARTDRIVE_INTERNAL_TOKEN:}

@@ -8,6 +8,18 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:localhost:8848}
+  datasource:
+    url: ${MYSQL_ORDER_URL:jdbc:mysql://localhost:3306/order_db?characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
+    username: ${SMARTDRIVE_DB_USER:smartdrive}
+    password: ${SMARTDRIVE_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+smartdrive:
+  internal-token: ${SMARTDRIVE_INTERNAL_TOKEN:}
 
 management:
   endpoints:

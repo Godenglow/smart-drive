@@ -26,7 +26,7 @@ spring:
             - id: order-service
               uri: lb://order-service
               predicates:
-                - Path=/api/orders/**
+                - Path=/api/orders,/api/orders/**
             # 健康检查：经网关访问各业务服务 /actuator/health，只开放 health 这一条路径
             - id: account-service-health
               uri: lb://account-service
