@@ -11,6 +11,7 @@ const id = String(useRoute().params.id)
 const validId = /^[1-9]\d{0,18}$/.test(id)
 const order = ref<Order | null>(null)
 const busy = ref(false)
+const reconciling = ref(false)
 type Action = 'accept' | 'start' | 'finish' | 'cancel' | 'pay-demo'
 const confirm = ref<Action | null>(null)
 const actionError = ref('')
@@ -35,19 +36,21 @@ const hint = computed(() => {
   return driverHints[order.value.status]
 })
 watch(action, () => { confirm.value = null })
-const { loading, error, trace, updatedAt, refresh } = usePolling(async signal => {
+const { loading, error, trace, updatedAt, refresh, refreshLatest } = usePolling(async signal => {
   if (!validId) throw new ApiError('订单编号无效。', 400)
   const version = revision
   try {
     const result = await orderApi.detail(id, signal)
-    if (!signal.aborted && version === revision && !busy.value) { order.value = result; blocked = false }
+    if (!signal.aborted && version === revision && !busy.value) { order.value = result; blocked = false; reconciling.value = false }
   } catch (failure) {
-    if (!signal.aborted && version === revision && !busy.value && failure instanceof ApiError && [403, 404].includes(failure.status)) { blocked = true; order.value = null }
+    // 动作发生前的慢读取（含失败）不能污染动作后的页面。
+    if (signal.aborted || version !== revision || busy.value) return
+    if (failure instanceof ApiError && [403, 404].includes(failure.status)) { blocked = true; order.value = null; reconciling.value = false }
     throw failure
   }
 }, () => !blocked && (!order.value || !terminal(order.value.status)))
 async function perform() {
-  if (busy.value || !action.value || confirm.value !== action.value) return
+  if (busy.value || reconciling.value || error.value || !action.value || confirm.value !== action.value) return
   const target = action.value
   busy.value = true; revision++; actionError.value = ''; actionTrace.value = ''
   try { order.value = await orderApi.action(id, target); confirm.value = null }
@@ -55,7 +58,8 @@ async function perform() {
     actionError.value = failure instanceof Error ? failure.message : '操作失败，请刷新订单后重试。'
     actionTrace.value = failure instanceof ApiError ? failure.requestId : ''
     confirm.value = null
-  } finally { busy.value = false; revision++; void refresh() }
+    reconciling.value = true
+  } finally { busy.value = false; revision++; void (reconciling.value ? refreshLatest() : refresh()) }
 }
 </script>
 
@@ -66,13 +70,14 @@ async function perform() {
     <div class="list-toolbar"><span class="muted">{{ updatedAt ? `最近更新 ${updatedAt}` : '正在获取订单' }} · {{ order && terminal(order.status) ? '行程已结束' : '每 5 秒同步进度' }}</span><button class="secondary-button" :disabled="loading || busy" @click="refresh">{{ loading ? '刷新中…' : '刷新状态' }}</button></div>
     <div v-if="error" class="error-box" role="alert">{{ error }}<small v-if="trace">请求编号：{{ trace }}</small></div>
     <div v-if="actionError" class="error-box" role="alert">{{ actionError }}<small v-if="actionTrace">请求编号：{{ actionTrace }}</small></div>
+    <p v-if="reconciling" class="notice" role="status">操作结果待确认，正在同步服务端状态。同步成功后可继续操作；读取失败可点击“刷新状态”。</p>
     <div v-if="order" class="order-layout">
       <section class="order-panel"><span class="status-badge" :class="order.status">{{ statusNames[order.status] || order.status }}</span><h2 class="detail-hint">{{ hint }}</h2>
         <div class="place-summary" v-for="(place, index) in [order.pickup, order.dropoff]" :key="index"><span class="place-dot" :class="{ destination: index === 1 }"></span><div><span class="muted">{{ index === 0 ? '上车地点' : '目的地点' }}</span><h2>{{ place.name }}</h2><p class="muted">经度 {{ place.lng }} · 纬度 {{ place.lat }}</p></div></div>
         <dl class="order-metadata"><div><dt>创建时间</dt><dd>{{ order.createdAt.replace('T', ' ') }}</dd></div><div><dt>更新时间</dt><dd>{{ order.updatedAt.replace('T', ' ') }}</dd></div><div><dt>司机编号</dt><dd>{{ order.driverId ?? (order.status === 'WAITING' ? '等待接单' : '候选视图不展示') }}</dd></div></dl>
       </section>
       <aside class="order-panel fare-panel"><span class="section-kicker">演示费用</span><div class="fare">¥ {{ money(order.amount) }}</div><p class="muted">固定演示金额，无真实资金流转。</p>
-        <template v-if="action"><button v-if="!confirm" class="primary-button" :disabled="busy || Boolean(error)" @click="confirm = action">{{ actionNames[action] }}<span aria-hidden="true">↗</span></button><div v-else class="notice" role="status"><p>{{ confirmations[confirm] }}</p><div class="confirmation-actions"><button class="secondary-button" :disabled="busy" @click="confirm = null">暂不操作</button><button class="secondary-button" :disabled="busy || Boolean(error)" @click="perform">{{ busy ? '正在处理…' : `确认${confirmNames[confirm]}` }}</button></div></div></template>
+        <template v-if="action"><button v-if="!confirm" class="primary-button" :disabled="busy || reconciling || Boolean(error)" @click="confirm = action">{{ actionNames[action] }}<span aria-hidden="true">↗</span></button><div v-else class="notice" role="status"><p>{{ confirmations[confirm] }}</p><div class="confirmation-actions"><button class="secondary-button" :disabled="busy" @click="confirm = null">暂不操作</button><button class="secondary-button" :disabled="busy || reconciling || Boolean(error)" @click="perform">{{ busy ? '正在处理…' : `确认${confirmNames[confirm]}` }}</button></div></div></template>
         <p v-if="order.status === 'PAID'" class="notice success" role="status">已完成模拟支付，无真实扣款。</p><RouterLink class="text-button back-link" :to="`${base}/orders`">返回我的订单 →</RouterLink>
       </aside>
     </div>

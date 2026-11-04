@@ -18,5 +18,7 @@ export default defineConfig({
     { name: 'drivers', testMatch: 'drivers.spec.ts', use: { ...devices['Desktop Chrome'] } },
     { name: 'drivers-mobile', testMatch: 'drivers-mobile.spec.ts', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
     { name: 'drivers-live', testMatch: 'drivers-live.spec.ts', use: { ...devices['Desktop Chrome'] } },
+    { name: 'journey', testMatch: 'journey.spec.ts', use: { ...devices['Desktop Chrome'] } },
+    { name: 'journey-live', testMatch: 'journey-live.spec.ts', use: { ...devices['Desktop Chrome'] } },
   ],
 })

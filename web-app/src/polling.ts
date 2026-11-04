@@ -10,9 +10,11 @@ export function usePolling(load: (signal: AbortSignal) => Promise<void>, shouldP
   let timer: number | undefined
   let controller: AbortController | undefined
   let disposed = false
-  async function refresh() {
-    if (disposed || document.hidden || loading.value) return
+  async function refresh(replace: boolean = false) {
+    if (disposed || document.hidden || (loading.value && replace !== true)) return
     window.clearTimeout(timer)
+    // 写操作失败后必须立即重读；旧请求的 finally 不能结束新一轮读取。
+    controller?.abort()
     loading.value = true
     const current = new AbortController()
     controller = current
@@ -28,13 +30,15 @@ export function usePolling(load: (signal: AbortSignal) => Promise<void>, shouldP
         trace.value = failure instanceof ApiError ? failure.requestId : ''
       }
     } finally {
-      loading.value = false
-      if (!disposed && !document.hidden && shouldPoll()) timer = window.setTimeout(() => void refresh(), interval)
+      if (controller === current) {
+        loading.value = false
+        if (!disposed && !document.hidden && shouldPoll()) timer = window.setTimeout(() => void refresh(), interval)
+      }
     }
   }
   function stop() { window.clearTimeout(timer); controller?.abort() }
   function visibility() { if (document.hidden) stop(); else void refresh() }
   onMounted(() => { document.addEventListener('visibilitychange', visibility); void refresh() })
   onUnmounted(() => { disposed = true; stop(); document.removeEventListener('visibilitychange', visibility) })
-  return { loading, error, trace, updatedAt, refresh }
+  return { loading, error, trace, updatedAt, refresh: () => refresh(), refreshLatest: () => refresh(true) }
 }
