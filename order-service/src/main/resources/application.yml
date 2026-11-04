@@ -39,7 +39,7 @@ smartdrive:
   internal-token: ${SMARTDRIVE_INTERNAL_TOKEN:}
   outbox:
     enabled: ${SMARTDRIVE_OUTBOX_ENABLED:true}
-    poll-interval-ms: ${SMARTDRIVE_OUTBOX_POLL_INTERVAL_MS:5000}
+    poll-interval-ms: ${SMARTDRIVE_OUTBOX_POLL_INTERVAL_MS:1000}
     batch-size: ${SMARTDRIVE_OUTBOX_BATCH_SIZE:50}
     confirm-timeout-ms: ${SMARTDRIVE_OUTBOX_CONFIRM_TIMEOUT_MS:5000}
 

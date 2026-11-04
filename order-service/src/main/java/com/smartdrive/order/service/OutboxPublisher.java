@@ -29,8 +29,8 @@ public class OutboxPublisher {
         this.batchSize = batchSize;
     }
 
-    @Scheduled(fixedDelayString = "${smartdrive.outbox.poll-interval-ms:5000}",
-            initialDelayString = "${smartdrive.outbox.poll-interval-ms:5000}")
+    @Scheduled(fixedDelayString = "${smartdrive.outbox.poll-interval-ms:1000}",
+            initialDelayString = "${smartdrive.outbox.poll-interval-ms:1000}")
     public void publishPending() {
         for (long id : outbox.pendingIds(batchSize)) {
             if (Thread.currentThread().isInterrupted()) return;

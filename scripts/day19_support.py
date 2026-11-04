@@ -147,10 +147,11 @@ def wait_until(predicate, message, seconds=None):
         time.sleep(0.25)
 
 
-def snapshot():
+def snapshot(health_ports=None):
     health = {}
     for port in (8080, 8081, 8082, 8083):
-        status, data, _ = http("GET", f"http://127.0.0.1:{port}/actuator/health")
+        health_port = (health_ports or {}).get(port, port)
+        status, data, _ = http("GET", f"http://127.0.0.1:{health_port}/actuator/health")
         require(status == 200 and data["status"] == "UP", f"Service {port} is not UP")
         health[str(port)] = {"status": data["status"]}
         if port == 8082:
