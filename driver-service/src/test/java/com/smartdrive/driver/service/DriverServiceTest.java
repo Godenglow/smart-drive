@@ -35,6 +35,18 @@ class DriverServiceTest {
     }
 
     @Test
+    void readsCurrentProfileAndMarkerWithoutRenewingIt() {
+        when(redis.hasKey("smartdrive:driver:online:42")).thenReturn(true, false);
+        var online = service.state(42L);
+        assertEquals("司机", online.profile().displayName());
+        assertTrue(online.online());
+        assertTrue(!service.state(42L).online());
+        org.mockito.Mockito.verify(redis, org.mockito.Mockito.times(2)).hasKey("smartdrive:driver:online:42");
+        org.mockito.Mockito.verifyNoMoreInteractions(redis);
+        assertEquals(null, service.state(99L).profile());
+    }
+
+    @Test
     void onlineWritesGeoAndExpiringMarkerTogether() {
         when(redis.execute(any(DefaultRedisScript.class), any(List.class), anyString(), anyString(), anyString())).thenReturn(1L);
         service.online(42L, point);

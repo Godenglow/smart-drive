@@ -5,6 +5,8 @@ import StatusPage from './views/StatusPage.vue'
 import CreateOrderPage from './views/CreateOrderPage.vue'
 import OrderListPage from './views/OrderListPage.vue'
 import OrderDetailPage from './views/OrderDetailPage.vue'
+import DriverDashboardPage from './views/DriverDashboardPage.vue'
+import DriverProfilePage from './views/DriverProfilePage.vue'
 import { ApiError } from './api'
 import { ensureAccount, homeFor, session, setExpirationHandler } from './session'
 
@@ -18,7 +20,10 @@ export const router = createRouter({
     { path: '/passenger/orders/new', component: CreateOrderPage, meta: { role: 'PASSENGER' } },
     { path: '/passenger/orders', component: OrderListPage, meta: { role: 'PASSENGER' } },
     { path: '/passenger/orders/:id', component: OrderDetailPage, meta: { role: 'PASSENGER' } },
-    { path: '/driver', component: HomePage, meta: { role: 'DRIVER' } },
+    { path: '/driver', component: DriverDashboardPage, meta: { role: 'DRIVER' } },
+    { path: '/driver/profile', component: DriverProfilePage, meta: { role: 'DRIVER' } },
+    { path: '/driver/orders', component: OrderListPage, meta: { role: 'DRIVER' } },
+    { path: '/driver/orders/:id', component: OrderDetailPage, meta: { role: 'DRIVER' } },
     { path: '/forbidden', component: StatusPage, props: { kind: 'forbidden' } },
     { path: '/session-error', component: StatusPage, props: { kind: 'unavailable' } },
     { path: '/:pathMatch(.*)*', component: StatusPage, props: { kind: 'missing' } },

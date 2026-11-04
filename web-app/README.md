@@ -1,6 +1,6 @@
 # SmartDrive Web
 
-Vue 3 + TypeScript + Vite + Vue Router。已完成 Day15 注册登录和角色路由，以及 Day16 乘客下单、订单列表/详情、轮询、取消与模拟支付。司机业务页面在 Day17 接入。
+Vue 3 + TypeScript + Vite + Vue Router。已完成 Day15 注册登录、Day16 乘客订单及 Day17 司机资料、工作台、上下线、心跳、待抢和履约页面。
 
 ## 本地启动
 
@@ -25,6 +25,9 @@ npm.cmd run dev
 | `/passenger/orders` | 本人订单分页列表，每 5 秒更新 |
 | `/passenger/orders/:id` | 详情、状态同步、取消/模拟支付 |
 | `/driver` | 司机工作台 |
+| `/driver/profile` | 司机称呼资料 |
+| `/driver/orders` | 本人已接订单与历史分页 |
+| `/driver/orders/:id` | 候选/本人订单详情、抢单、开始/完成服务 |
 | `/forbidden` | 角色不匹配的权限提示 |
 | `/session-error` | 无法确认会话时重试连接或切换账号 |
 
@@ -34,12 +37,14 @@ JWT 与到期时间存入当前标签页 `sessionStorage`，刷新时重新请�
 
 ```powershell
 npm.cmd run build              # TypeScript 检查 + 生产构建
-npm.cmd test                   # 42 项模拟/移动端测试；3 项真实测试默认跳过
+npm.cmd test                   # 64 项模拟/移动端测试；4 项真实测试默认跳过
 cd ..
-pwsh -NoProfile -File scripts/verify-day16.ps1 -Live
+pwsh -NoProfile -File scripts/verify-day17.ps1 -Live
 ```
 
-Day16 脚本读取项目根 `.env.local`，执行构建和 43 项测试（18 项 Day15 回归、24 项订单模拟/移动测试、1 项真实订单链路）。通过浏览器创建/取消订单及模拟支付，通过司机 API 夹具验证 MQ 通知和履约；两个临时账号 BCrypt 与两笔订单核对后，仅清理本次数据。需要 `mysql.exe`、`SMARTDRIVE_DB_PASSWORD`、RabbitMQ 管理 API 和本机 Chrome。可设置 `PLAYWRIGHT_CHANNEL=msedge`；截图与 JSON 报告位于根目录 `logs/day16-*`。移动测试使用 Chromium 设备模拟，未测真实 iOS Safari。原有 `verify-day15.ps1 -Live` 仍单独运行 Day15 的 20 项测试。
+Day17 脚本读取项目根 `.env.local`，执行构建和 65 项测试（42 项 Day15/16 回归、22 项司机模拟/移动测试、1 项真实司机链路）。司机业务操作全部通过浏览器完成，乘客下单/模拟支付通过 API 夹具完成；两个临时账号 BCrypt、一笔 PAID 订单、司机归属与占用释放及事件消费核对后，仅清理本次数据。需要四个服务、MySQL、Redis、RabbitMQ、Nacos、`mysql.exe`、`SMARTDRIVE_DB_PASSWORD`、RabbitMQ 管理 API 和本机 Chrome。可设置 `PLAYWRIGHT_CHANNEL=msedge`；截图与 JSON 报告位于根目录 `logs/day17-*`。移动测试使用 Chromium 设备模拟，未测真实 iOS Safari。Day15/16 验收脚本保留，可单独重跑此前的真实乘客链路。
+
+司机工作台每 5 秒检查最近 20 条通知，只显示 WAITING 卡片；在线时每 30 秒续期已确认的演示坐标。编辑经纬度后需点击更新位置，未提交的编辑不参与心跳。状态由 `/api/drivers/me/status` 恢复，位置缓存只用于本标签页续期，不作为上线凭据。隐藏或离开工作台即暂停心跳和通知轮询，在线标记最长 120 秒后过期，可主动离线立即移除。详情页、资料页和历史页不维持位置心跳，返回工作台会重新读取真实状态；没有缓存坐标时需主动确认位置。
 
 下单网络失败时保留草稿和 requestId，并锁定路线；“重试确认原订单”复用同一幂等请求。确认成功后才删除草稿。无附近司机等明确业务拒绝允许修改路线。草稿按账号隔离，关闭标签页后不保证保留；浏览器禁用存储时只保留当前页面内存。列表/详情隐藏时暂停轮询，离开中止请求；详情已取消/已支付后停止定时读取。
 

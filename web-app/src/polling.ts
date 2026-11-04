@@ -2,7 +2,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { ApiError } from './api'
 
 /** 完成后再计时，避免慢请求重叠；隐藏或离开页面时中止读取。 */
-export function usePolling(load: (signal: AbortSignal) => Promise<void>, shouldPoll: () => boolean = () => true) {
+export function usePolling(load: (signal: AbortSignal) => Promise<void>, shouldPoll: () => boolean = () => true, interval = 5000) {
   const loading = ref(false)
   const error = ref('')
   const trace = ref('')
@@ -29,7 +29,7 @@ export function usePolling(load: (signal: AbortSignal) => Promise<void>, shouldP
       }
     } finally {
       loading.value = false
-      if (!disposed && !document.hidden && shouldPoll()) timer = window.setTimeout(() => void refresh(), 5000)
+      if (!disposed && !document.hidden && shouldPoll()) timer = window.setTimeout(() => void refresh(), interval)
     }
   }
   function stop() { window.clearTimeout(timer); controller?.abort() }

@@ -15,5 +15,8 @@ export default defineConfig({
     { name: 'orders', testMatch: 'orders.spec.ts', use: { ...devices['Desktop Chrome'] } },
     { name: 'orders-mobile', testMatch: 'orders-mobile.spec.ts', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
     { name: 'orders-live', testMatch: 'orders-live.spec.ts', use: { ...devices['Desktop Chrome'] } },
+    { name: 'drivers', testMatch: 'drivers.spec.ts', use: { ...devices['Desktop Chrome'] } },
+    { name: 'drivers-mobile', testMatch: 'drivers-mobile.spec.ts', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
+    { name: 'drivers-live', testMatch: 'drivers-live.spec.ts', use: { ...devices['Desktop Chrome'] } },
   ],
 })

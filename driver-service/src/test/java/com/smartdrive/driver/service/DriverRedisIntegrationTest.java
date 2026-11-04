@@ -51,7 +51,9 @@ class DriverRedisIntegrationTest {
             when(profiles.find(far)).thenReturn(new ProfileView(far, "远处司机", LocalDateTime.now()));
             service.online(expired, center);
             service.online(far, point("11", "11"));
+            assertTrue(service.state(expired).online());
             redis.delete(DriverService.ONLINE_PREFIX + expired);
+            assertFalse(service.state(expired).online());
 
             List<Long> nearby = service.nearby(center);
             assertEquals(5, nearby.size());

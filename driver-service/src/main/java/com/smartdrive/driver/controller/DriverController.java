@@ -4,6 +4,7 @@ import com.smartdrive.common.api.Result;
 import com.smartdrive.common.api.auth.Principal;
 import com.smartdrive.common.api.auth.ServletAuthFilter;
 import com.smartdrive.driver.dto.LocationRequest;
+import com.smartdrive.driver.dto.DriverStateView;
 import com.smartdrive.driver.dto.OnlineView;
 import com.smartdrive.driver.dto.ProfileRequest;
 import com.smartdrive.driver.dto.ProfileView;
@@ -39,6 +40,12 @@ public class DriverController {
             @RequestParam(defaultValue = "NEW") String status,
             @RequestParam(defaultValue = "100") int limit) {
         return Result.ok(notices.list(userId(request), status, limit));
+    }
+
+    @GetMapping("/status")
+    @Operation(summary = "读取本人资料及在线状态", description = "无资料时 profile 为 null；在线状态以 Redis 有效标记为准，读取不会续期。")
+    public Result<DriverStateView> status(HttpServletRequest request) {
+        return Result.ok(drivers.state(userId(request)));
     }
 
     @PutMapping("/profile")

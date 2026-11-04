@@ -6,7 +6,7 @@ const account = { userId: 15, phone, role: 'PASSENGER' }
 async function mockApi(page: Page, role = 'PASSENGER') {
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname
-    const data = path.endsWith('/login') ? { accessToken: 'test-token', expiresAt: new Date(Date.now() + 7200_000).toISOString(), role }
+    const data = path.endsWith('/drivers/me/status') ? { profile: null, online: false } : path.endsWith('/drivers/me/notices') ? [] : path.endsWith('/login') ? { accessToken: 'test-token', expiresAt: new Date(Date.now() + 7200_000).toISOString(), role }
       : path.endsWith('/register') ? { userId: 15 } : { ...account, role }
     await route.fulfill({ json: { code: 0, message: 'ok', data } })
   })

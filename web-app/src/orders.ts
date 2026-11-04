@@ -4,7 +4,7 @@ export type OrderStatus = 'WAITING' | 'ACCEPTED' | 'IN_SERVICE' | 'FINISHED' | '
 export interface Place { name: string; lng: number; lat: number }
 export interface CreateOrder { requestId: string; pickup: Place; dropoff: Place }
 export interface Order {
-  id: number; requestId: string; passengerId: number; driverId: number | null
+  id: number; requestId: string | null; passengerId: number | null; driverId: number | null
   pickup: Place; dropoff: Place; amount: number; status: OrderStatus; createdAt: string; updatedAt: string
 }
 export interface OrderPage { page: number; size: number; total: number; items: Order[] }
@@ -17,5 +17,5 @@ export const orderApi = {
   create: (body: CreateOrder) => request<Order>('/api/orders', { method: 'POST', body }),
   mine: (page: number, signal?: AbortSignal) => request<OrderPage>(`/api/orders/mine?page=${page}&size=10`, { signal }),
   detail: (id: string, signal?: AbortSignal) => request<Order>(`/api/orders/${id}`, { signal }),
-  action: (id: string, action: 'cancel' | 'pay-demo') => request<Order>(`/api/orders/${id}/${action}`, { method: 'POST' }),
+  action: (id: string, action: 'cancel' | 'pay-demo' | 'accept' | 'start' | 'finish') => request<Order>(`/api/orders/${id}/${action}`, { method: 'POST' }),
 }

@@ -3,6 +3,7 @@ package com.smartdrive.driver.service;
 import com.smartdrive.common.api.ApiException;
 import com.smartdrive.common.api.ErrorCode;
 import com.smartdrive.driver.dto.LocationRequest;
+import com.smartdrive.driver.dto.DriverStateView;
 import com.smartdrive.driver.dto.OnlineView;
 import com.smartdrive.driver.dto.ProfileView;
 import com.smartdrive.driver.mapper.DriverProfileMapper;
@@ -36,6 +37,10 @@ public class DriverService {
     public ProfileView saveProfile(long userId, String name) {
         profiles.upsert(userId, name.trim());
         return profiles.find(userId);
+    }
+
+    public DriverStateView state(long userId) {
+        return new DriverStateView(profiles.find(userId), Boolean.TRUE.equals(redis.hasKey(ONLINE_PREFIX + userId)));
     }
 
     public OnlineView online(long userId, LocationRequest location) {

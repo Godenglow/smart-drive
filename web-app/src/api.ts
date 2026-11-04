@@ -17,6 +17,9 @@ const messages: Record<string, string> = {
   ORDER_NOT_WAITING: '订单已不在等待状态，已为你刷新订单。',
   ORDER_STATUS_INVALID: '订单状态已变化，已为你刷新订单。',
   NOT_FOUND: '订单不存在或已被移除。',
+  DRIVER_OFFLINE: '在线状态已失效，请重新上线。',
+  DRIVER_BUSY: '你还有进行中的订单，请先完成服务。',
+  ORDER_ALREADY_TAKEN: '订单已被其他司机接走，请查看其他待抢订单。',
 }
 
 let getToken = () => ''
