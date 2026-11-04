@@ -13,9 +13,11 @@ if (Test-Path $localEnv) {
 $createdFile = Join-Path $projectRoot 'logs/day15-created-accounts.jsonl'
 $oldMysqlPassword = $env:MYSQL_PWD
 $oldLive = $env:SMARTDRIVE_LIVE_TEST
+$oldOutput = $env:PLAYWRIGHT_JSON_OUTPUT
 $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smartdrive' }
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
 $env:SMARTDRIVE_LIVE_TEST = if ($Live) { 'true' } else { 'false' }
+$env:PLAYWRIGHT_JSON_OUTPUT = '../logs/day15-browser-results.json'
 $testPassed = $false
 $cleanupErrors = [Collections.Generic.List[string]]::new()
 $accountsVerified = 0
@@ -30,7 +32,7 @@ try {
     if ($Live -and -not $env:SMARTDRIVE_DB_PASSWORD) { throw '真实验收需要 SMARTDRIVE_DB_PASSWORD，用于清理本次临时账号。' }
     & npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw '前端构建失败' }
-    & npm.cmd test
+    & npm.cmd test -- --project=chromium --project=mobile --project=live
     if ($LASTEXITCODE -ne 0) { throw '浏览器验收失败，见 logs/day15-browser-results.json' }
     $testPassed = $true
 } finally {
@@ -54,6 +56,7 @@ try {
     }
     $env:MYSQL_PWD = $oldMysqlPassword
     $env:SMARTDRIVE_LIVE_TEST = $oldLive
+    $env:PLAYWRIGHT_JSON_OUTPUT = $oldOutput
     New-Item -ItemType Directory -Path (Join-Path $projectRoot 'logs') -Force | Out-Null
     @{timestamp=(Get-Date).ToString('o');live=[bool]$Live;testPassed=$testPassed;accountsVerified=$accountsVerified;cleanupPassed=($cleanupErrors.Count -eq 0);cleanupErrors=@($cleanupErrors)} | ConvertTo-Json -Depth 5 | Set-Content $reportPath
     if ($cleanupErrors.Count -gt 0) { throw "临时账号核对/清理失败，见 $reportPath" }

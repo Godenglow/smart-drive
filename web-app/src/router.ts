@@ -2,6 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AuthPage from './views/AuthPage.vue'
 import HomePage from './views/HomePage.vue'
 import StatusPage from './views/StatusPage.vue'
+import CreateOrderPage from './views/CreateOrderPage.vue'
+import OrderListPage from './views/OrderListPage.vue'
+import OrderDetailPage from './views/OrderDetailPage.vue'
 import { ApiError } from './api'
 import { ensureAccount, homeFor, session, setExpirationHandler } from './session'
 
@@ -12,6 +15,9 @@ export const router = createRouter({
     { path: '/login', component: AuthPage },
     { path: '/register', component: AuthPage },
     { path: '/passenger', component: HomePage, meta: { role: 'PASSENGER' } },
+    { path: '/passenger/orders/new', component: CreateOrderPage, meta: { role: 'PASSENGER' } },
+    { path: '/passenger/orders', component: OrderListPage, meta: { role: 'PASSENGER' } },
+    { path: '/passenger/orders/:id', component: OrderDetailPage, meta: { role: 'PASSENGER' } },
     { path: '/driver', component: HomePage, meta: { role: 'DRIVER' } },
     { path: '/forbidden', component: StatusPage, props: { kind: 'forbidden' } },
     { path: '/session-error', component: StatusPage, props: { kind: 'unavailable' } },

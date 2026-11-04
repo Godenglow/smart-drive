@@ -13,6 +13,10 @@ const messages: Record<string, string> = {
   UNAUTHORIZED: '手机号或密码错误，请重新输入。',
   FORBIDDEN: '当前账号没有此操作的权限。',
   SERVICE_UNAVAILABLE: '服务暂时不可用，请稍后重试。',
+  NO_DRIVER_NEARBY: '附近暂无在线司机，请稍后再试或调整上车地点。',
+  ORDER_NOT_WAITING: '订单已不在等待状态，已为你刷新订单。',
+  ORDER_STATUS_INVALID: '订单状态已变化，已为你刷新订单。',
+  NOT_FOUND: '订单不存在或已被移除。',
 }
 
 let getToken = () => ''
@@ -23,11 +27,14 @@ export function configureAuth(token: () => string, unauthorized: (token: string)
 }
 
 /** 仅接受本站 API 路径；不自动重试写请求。 */
-export async function request<T>(path: string, options: { method?: string; body?: unknown; auth?: boolean } = {}): Promise<T> {
+export async function request<T>(path: string, options: { method?: string; body?: unknown; auth?: boolean; signal?: AbortSignal } = {}): Promise<T> {
   if (!path.startsWith('/api/')) throw new Error('请求地址必须以 /api/ 开头')
   const token = options.auth === false ? '' : getToken()
   const requestId = crypto.randomUUID()
   const controller = new AbortController()
+  const abort = () => controller.abort()
+  options.signal?.addEventListener('abort', abort, { once: true })
+  if (options.signal?.aborted) controller.abort()
   const timeout = window.setTimeout(() => controller.abort(), 10_000)
   try {
     const headers: Record<string, string> = { 'X-Request-Id': requestId, Accept: 'application/json' }
@@ -50,6 +57,7 @@ export async function request<T>(path: string, options: { method?: string; body?
     throw new ApiError(controller.signal.aborted ? '请求超时，请检查网络后重试。' : '暂时无法连接服务，请检查网络后重试。', 0, 'NETWORK_ERROR', requestId)
   } finally {
     window.clearTimeout(timeout)
+    options.signal?.removeEventListener('abort', abort)
   }
 }
 

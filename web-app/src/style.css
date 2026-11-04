@@ -715,6 +715,63 @@ h1,h2,p {
   margin:30px auto 15px
 }
 
+.order-workspace { max-width:1200px }
+.order-nav,.list-toolbar,.order-card-top,.order-card-bottom,.pagination { display:flex; justify-content:space-between; align-items:center; gap:16px }
+.order-nav { font-size:12px; margin-bottom:32px; color:#52705c }
+.page-heading h1 { font-size:30px; font-weight:500; margin:12px 0 }
+.page-heading { margin-bottom:30px }
+.order-layout { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:24px; align-items:start }
+.order-panel { background:#fff; border:1px solid #e1e6da; border-radius:6px; padding:30px; min-width:0 }
+.preset-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12px; padding-bottom:22px; border-bottom:1px solid #e1e6da }
+.secondary-button { border:1px solid #d5dfce; background:#f7f9f2; color:#315441; padding:10px 13px; border-radius:4px; min-height:40px; font-size:12px }
+.secondary-button:hover { background:#eaf0df }
+.place-fields { border:0; padding:15px 0 0; margin:24px 0 0; min-width:0 }
+.place-fields legend { font-size:16px; font-weight:600 }
+.place-dot { display:inline-block; width:10px; height:10px; background:#527653; border-radius:50%; margin-right:10px; flex-shrink:0 }
+.place-dot.destination { background:#ac8459; border-radius:2px }
+.place-fields .field { margin:12px 0 }
+.coordinate-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px }
+.fare-panel h2 { font-size:18px; margin-top:20px; font-weight:500 }
+.fare { font-size:40px; font-weight:500; margin:24px 0 18px; color:#254e3d }
+.fare span { font-size:24px }
+.fare-panel hr { border:0; border-top:1px solid #e1e6da; margin:24px 0 }
+.list-toolbar { margin:22px 0 }
+.order-list { display:grid; gap:16px; margin-top:20px }
+.order-card { display:block; transition:border-color .2s }
+.order-card:hover { border-color:#759471 }
+.order-card h2 { font-size:20px; font-weight:500; line-height:1.7; margin:22px 0; overflow-wrap:anywhere }
+.order-card h2>span { color:#95a38a; padding:0 12px }
+.order-card-bottom { color:#7a8870; font-size:11px; flex-wrap:wrap }
+.order-card-bottom strong { font-size:18px; color:#315441; margin-left:auto }
+.status-badge { display:inline-block; font-size:12px; padding:7px 12px; border-radius:4px; background:#edf2e3; color:#52704b }
+.status-badge.WAITING,.status-badge.FINISHED { background:#f8f0dc; color:#8d6e27 }
+.status-badge.CANCELLED { background:#f0f1ed; color:#7a8274 }
+.status-badge.IN_SERVICE { background:#e4efe9; color:#315b47 }
+.pagination { justify-content:center; font-size:12px; margin-top:28px }
+.empty-state { text-align:center; margin-top:24px; padding:50px 24px }
+.empty-state h2 { font-size:20px; margin-bottom:16px }
+.empty-state .primary-button { max-width:240px; margin:24px auto 0 }
+.detail-hint { font-size:18px; font-weight:500; line-height:1.8; margin:22px 0 30px }
+.place-summary { display:flex; align-items:baseline; margin:25px 0; overflow-wrap:anywhere }
+.place-summary h2 { font-size:21px; margin:9px 0; font-weight:500 }
+.order-metadata { margin:30px 0 0; border-top:1px solid #e1e6da; padding-top:10px; font-size:12px }
+.order-metadata>div { display:flex; justify-content:space-between; gap:15px; margin:18px 0 }
+.order-metadata dt { color:#859078; flex-shrink:0 }
+.order-metadata dd { margin:0; text-align:right; overflow-wrap:anywhere }
+.confirmation-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:15px }
+.back-link { display:block; text-align:center; margin-top:20px }
+.error-box>span { display:block; margin-top:8px }
+@media(max-width:700px) {
+  .order-layout { grid-template-columns:1fr; gap:16px }
+  .order-panel { padding:22px }
+  .page-heading h1 { font-size:25px; line-height:1.5 }
+  .coordinate-grid { gap:10px }
+  .order-card-bottom strong { margin-left:0 }
+  .order-card-bottom time { width:100% }
+  .order-card h2 { font-size:18px }
+  .pagination { gap:10px }
+}
+
 @media(min-width:1500px) {
   .auth-layout {
     padding-top:55px;
