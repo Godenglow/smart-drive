@@ -1,4 +1,4 @@
--- Day 8 订单库；结构以项目开发文档第 5 节为基线，后续 Day 9-12 继续使用预留表。
+-- Day 8-12 订单库；outbox_event 在 Day 12 启用，结构兼容已有数据库，无需破坏性迁移。
 -- 使用已有项目数据库账号执行；不包含凭据或演示数据。
 CREATE DATABASE IF NOT EXISTS order_db CHARACTER SET utf8mb4;
 

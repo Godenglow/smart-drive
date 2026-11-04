@@ -7,6 +7,8 @@ import com.smartdrive.order.dto.CreateOrderRequest;
 import com.smartdrive.order.dto.OrderPage;
 import com.smartdrive.order.dto.OrderView;
 import com.smartdrive.order.service.OrderService;
+import com.smartdrive.order.service.OrderAcceptanceService;
+import com.smartdrive.order.service.OrderFulfillmentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,8 +25,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService orders;
+    private final OrderAcceptanceService acceptance;
+    private final OrderFulfillmentService fulfillment;
 
-    public OrderController(OrderService orders) { this.orders = orders; }
+    public OrderController(OrderService orders, OrderAcceptanceService acceptance, OrderFulfillmentService fulfillment) {
+        this.orders = orders;
+        this.acceptance = acceptance;
+        this.fulfillment = fulfillment;
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -41,6 +49,31 @@ public class OrderController {
     @GetMapping("/{id}")
     public Result<OrderView> detail(HttpServletRequest request, @PathVariable long id) {
         return Result.ok(orders.detail(principal(request), id));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public Result<OrderView> cancel(HttpServletRequest request, @PathVariable long id) {
+        return Result.ok(orders.cancel(principal(request), id));
+    }
+
+    @PostMapping("/{id}/accept")
+    public Result<OrderView> accept(HttpServletRequest request, @PathVariable long id) {
+        return Result.ok(acceptance.accept(principal(request), id));
+    }
+
+    @PostMapping("/{id}/start")
+    public Result<OrderView> start(HttpServletRequest request, @PathVariable long id) {
+        return Result.ok(fulfillment.start(principal(request), id));
+    }
+
+    @PostMapping("/{id}/finish")
+    public Result<OrderView> finish(HttpServletRequest request, @PathVariable long id) {
+        return Result.ok(fulfillment.finish(principal(request), id));
+    }
+
+    @PostMapping("/{id}/pay-demo")
+    public Result<OrderView> payDemo(HttpServletRequest request, @PathVariable long id) {
+        return Result.ok(fulfillment.payDemo(principal(request), id));
     }
 
     private Principal principal(HttpServletRequest request) {

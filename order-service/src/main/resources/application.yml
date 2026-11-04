@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: order-service
+  task:
+    scheduling:
+      pool:
+        size: 2
   cloud:
     nacos:
       discovery:
@@ -13,6 +17,19 @@ spring:
     username: ${SMARTDRIVE_DB_USER:smartdrive}
     password: ${SMARTDRIVE_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    connection-timeout: 3s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      retry:
+        enabled: false
 
 mybatis:
   configuration:
@@ -20,6 +37,11 @@ mybatis:
 
 smartdrive:
   internal-token: ${SMARTDRIVE_INTERNAL_TOKEN:}
+  outbox:
+    enabled: ${SMARTDRIVE_OUTBOX_ENABLED:true}
+    poll-interval-ms: ${SMARTDRIVE_OUTBOX_POLL_INTERVAL_MS:5000}
+    batch-size: ${SMARTDRIVE_OUTBOX_BATCH_SIZE:50}
+    confirm-timeout-ms: ${SMARTDRIVE_OUTBOX_CONFIRM_TIMEOUT_MS:5000}
 
 management:
   endpoints:

@@ -1,5 +1,10 @@
 # build output
 target/
+node_modules/
+web-app/dist/
+web-app/test-results/
+web-app/playwright-report/
+*.tsbuildinfo
 
 # IDE
 .idea/

@@ -40,6 +40,36 @@ public class NearbyDriverClient {
         }
     }
 
+    public void requireEligible(long driverId, long orderId) {
+        JsonNode response = eligibility(driverId, orderId);
+        if (!response.path("data").path("notified").booleanValue()) throw new ApiException(ErrorCode.FORBIDDEN);
+        if (!response.path("data").path("online").booleanValue()) throw new ApiException(ErrorCode.DRIVER_OFFLINE);
+    }
+
+    public boolean wasNotified(long driverId, long orderId) {
+        return eligibility(driverId, orderId).path("data").path("notified").booleanValue();
+    }
+
+    private JsonNode eligibility(long driverId, long orderId) {
+        if (token.isBlank()) throw new ApiException(ErrorCode.SERVICE_UNAVAILABLE);
+        JsonNode response;
+        try {
+            response = client.get()
+                    .uri("http://driver-service/internal/drivers/{driverId}/eligibility?orderId={orderId}",
+                            driverId, orderId)
+                    .header("X-Internal-Token", token)
+                    .retrieve().body(JsonNode.class);
+        } catch (RestClientException ex) {
+            throw new ApiException(ErrorCode.SERVICE_UNAVAILABLE);
+        }
+        if (response == null || response.path("code").asInt(-1) != 0
+                || !response.path("data").path("online").isBoolean()
+                || !response.path("data").path("notified").isBoolean()) {
+            throw new ApiException(ErrorCode.SERVICE_UNAVAILABLE);
+        }
+        return response;
+    }
+
     @Configuration
     static class ClientConfiguration {
         @Bean

@@ -4,6 +4,18 @@ server:
 spring:
   application:
     name: driver-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    connection-timeout: 3s
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        auto-startup: ${SMARTDRIVE_MATCHING_ENABLED:true}
   cloud:
     nacos:
       discovery:
@@ -38,3 +50,7 @@ logging:
 
 smartdrive:
   internal-token: ${SMARTDRIVE_INTERNAL_TOKEN:}
+  matching:
+    max-attempts: ${SMARTDRIVE_MATCHING_MAX_ATTEMPTS:4}
+    initial-interval-ms: ${SMARTDRIVE_MATCHING_INITIAL_INTERVAL_MS:1000}
+    max-interval-ms: ${SMARTDRIVE_MATCHING_MAX_INTERVAL_MS:5000}

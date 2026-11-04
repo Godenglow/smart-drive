@@ -17,6 +17,10 @@ public enum ErrorCode {
     PHONE_ALREADY_EXISTS(409, "手机号已注册"),
     DRIVER_OFFLINE(409, "司机未上线或在线状态已过期"),
     NO_DRIVER_NEARBY(409, "附近暂无在线司机"),
+    DRIVER_BUSY(409, "司机已有未完成订单"),
+    ORDER_ALREADY_TAKEN(409, "订单已被接走"),
+    ORDER_NOT_WAITING(409, "订单已不在待接单状态"),
+    ORDER_STATUS_INVALID(409, "不允许的订单状态转换"),
     SERVICE_UNAVAILABLE(503, "依赖服务暂不可用"),
     INTERNAL_ERROR(500, "服务内部错误");
 
