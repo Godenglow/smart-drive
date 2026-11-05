@@ -78,7 +78,7 @@ s.require(s.number("SELECT COUNT(*) FROM order_db.outbox_event WHERE status='NEW
     }
     if ($report.failures -ne 0 -or $report.errors -ne 0 -or $report.skipped -ne 0) { throw 'Real regression must have zero failures, errors and skips' }
     if ($publisherSuspended) {
-        & (Join-Path $PSScriptRoot 'day21-runtime.ps1') -Service order-service -Restore -PollIntervalMs 1000
+        & (Join-Path $PSScriptRoot 'start-local.ps1')
         $publisherSuspended = $false
     }
     & python scripts/verify-day19.py 2>&1 | Tee-Object 'logs/day19-live.log'
@@ -89,7 +89,7 @@ s.require(s.number("SELECT COUNT(*) FROM order_db.outbox_event WHERE status='NEW
     $report.passed = $true
 } finally {
     if ($publisherSuspended) {
-        & (Join-Path $PSScriptRoot 'day21-runtime.ps1') -Service order-service -Restore -PollIntervalMs 1000
+        & (Join-Path $PSScriptRoot 'start-local.ps1')
     }
     $report.finishedAt = (Get-Date).ToString('o')
     $report | ConvertTo-Json -Depth 8 | Set-Content 'logs/day19-verification.json' -Encoding utf8

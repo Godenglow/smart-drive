@@ -4,7 +4,7 @@
 
 CREATE DATABASE IF NOT EXISTS account_db CHARACTER SET utf8mb4;
 
-CREATE TABLE account_db.account (
+CREATE TABLE IF NOT EXISTS account_db.account (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   phone VARCHAR(32) NOT NULL UNIQUE,
   password_hash VARCHAR(100) NOT NULL,

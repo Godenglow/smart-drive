@@ -351,6 +351,10 @@ class Fixture:
                            "AND password_hash REGEXP '^[$]2[aby][$]'") == len(known),
                     "Fixture account/BCrypt mismatch")
 
+    def profile_delete_sql(self, users):
+        return (f"DELETE FROM driver_db.driver_profile WHERE user_id IN ({users}) "
+                f"AND display_name='{self.marker}'")
+
     def cleanup(self):
         require(self.data, "No fixture manifest")
         if self.data["status"] == "cleaned":
@@ -381,7 +385,7 @@ class Fixture:
                           f"DELETE FROM order_db.driver_active_order WHERE order_id IN ({order_ids}) AND driver_id IN ({users})",
                           f"DELETE FROM order_db.outbox_event WHERE aggregate_id IN ({order_ids})",
                           f"DELETE FROM order_db.ride_order WHERE id IN ({order_ids}) AND pickup_name='{self.marker}'",
-                          f"DELETE FROM driver_db.driver_profile WHERE user_id IN ({users}) AND display_name='{self.marker}'"]
+                          self.profile_delete_sql(users)]
             for a in accounts:
                 statements.append(f"DELETE FROM account_db.account WHERE id={int(a['id'])} AND phone='{a['phone']}' AND role='{a['role']}'")
             statements.append("COMMIT")

@@ -5,7 +5,8 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $localEnv = Join-Path $projectRoot '.env.local'
 if (Test-Path $localEnv) {
     Get-Content $localEnv | ForEach-Object {
-        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$' -and
+                $null -eq [Environment]::GetEnvironmentVariable($matches[1], 'Process')) {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2].Trim().Trim('"').Trim("'"), 'Process')
         }
     }
