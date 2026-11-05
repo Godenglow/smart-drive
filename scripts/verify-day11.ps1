@@ -5,13 +5,15 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $localEnv = Join-Path $projectRoot '.env.local'
 if (Test-Path $localEnv) {
     Get-Content $localEnv | ForEach-Object {
-        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$' -and
+            $null -eq [Environment]::GetEnvironmentVariable($matches[1], 'Process')) {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2].Trim().Trim('"').Trim("'"), 'Process')
         }
     }
 }
 $previousMysqlPassword = $env:MYSQL_PWD
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
+. (Join-Path $PSScriptRoot 'live-order-fixtures.ps1')
 $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smartdrive' }
 $checks = [Collections.Generic.List[object]]::new()
 $accounts = [Collections.Generic.List[object]]::new()
@@ -53,6 +55,7 @@ function New-Order {
     $place = @{name="Day11-$runId";lng=117.215;lat=39.136}
     $created = Api Post '/api/orders' $passenger.headers @{requestId=[Guid]::NewGuid().ToString();pickup=$place;dropoff=$place} 201
     $orders.Add([long]$created.id)
+    Wait-OrderMatching @([long]$created.id)
     Assert-True ($created.status -eq 'WAITING' -and $created.amount -eq 50.00) 'New order state or demo amount mismatch'
     return [long]$created.id
 }
@@ -90,7 +93,7 @@ try {
         $null = Api Post "/api/orders/invalid/$action" $owner $null 400 INVALID_PARAM
     }
     $null = Api Post "/api/orders/$id/pay-demo" $passenger.headers $null 409 ORDER_STATUS_INVALID
-    $null = Sql "INSERT INTO driver_db.order_notice(order_id,driver_id) VALUES($id,$($driver.id))"
+    Assert-True ((Sql "SELECT COUNT(*) FROM driver_db.order_notice WHERE order_id=$id AND driver_id=$($driver.id)") -eq 1) 'Real matching notification missing'
     $null = Api Post "/api/orders/$id/accept" $driver.headers $null 200
     foreach ($action in @('start','finish')) {
         $null = Api Post "/api/orders/$id/$action" $otherDriver.headers $null 403 FORBIDDEN
@@ -105,7 +108,7 @@ try {
 
     # Accept another order before the old one is paid, then retry the old finish.
     $next = New-Order
-    $null = Sql "INSERT INTO driver_db.order_notice(order_id,driver_id) VALUES($next,$($driver.id))"
+    Assert-True ((Sql "SELECT COUNT(*) FROM driver_db.order_notice WHERE order_id=$next AND driver_id=$($driver.id)") -eq 1) 'Next order notification missing'
     $null = Api Post "/api/orders/$next/accept" $driver.headers $null 200
     $null = Api Post "/api/orders/$id/finish" $driver.headers $null 409 ORDER_STATUS_INVALID
     $null = Api Post "/api/orders/$id/pay-demo" $otherPassenger.headers $null 403 FORBIDDEN
@@ -143,6 +146,9 @@ try {
     }
     $report = [PSCustomObject]@{time=(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz');runId=$runId;orderIds=$orders.ToArray();races=@($startRace,$finishRace,$payRace);checks=$checks.ToArray();history='Passenger and driver scoped, ordered and paginated';releasedBeforePayment=$true;newOccupationPreserved=$true;openApi=$true}
 } finally {
+    try {
+    # Do not remove deduplication rows while an event can still arrive or be redelivered.
+    Wait-OrderMatching $orders.ToArray()
     # Attempt all cleanup steps even if a service is unavailable; retain the original failure.
     foreach ($account in $accounts) {
         if ($account.role -eq 'DRIVER' -and $account.headers.Authorization) {
@@ -152,6 +158,7 @@ try {
     }
     foreach ($id in $orders) {
         try {
+            $null = Sql "DELETE FROM driver_db.processed_order_event WHERE order_id=$id; DELETE FROM order_db.outbox_event WHERE aggregate_id=$id;"
             foreach ($account in $accounts) {
                 $null = Sql "DELETE FROM driver_db.order_notice WHERE order_id=$id AND driver_id=$($account.id); DELETE FROM order_db.driver_active_order WHERE order_id=$id AND driver_id=$($account.id);"
             }
@@ -163,7 +170,7 @@ try {
         try { $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($account.id) AND display_name='Day11-$runId'; DELETE FROM account_db.account WHERE id=$($account.id) AND phone='$($account.phone)';" }
         catch { $cleanupErrors.Add("Test account cleanup failed for $($account.id)") }
     }
-    $env:MYSQL_PWD = $previousMysqlPassword
+    } finally { $env:MYSQL_PWD = $previousMysqlPassword }
     if ($cleanupErrors.Count -gt 0) { Write-Warning ($cleanupErrors -join '; ') }
 }
 Assert-True ($cleanupErrors.Count -eq 0) 'Day11 test cleanup did not finish'

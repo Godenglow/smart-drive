@@ -30,6 +30,10 @@ public class ServletAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String path = request.getRequestURI();
+        if (!AuthPolicy.canonicalPath(path)) {
+            reject(response, ErrorCode.INVALID_PARAM);
+            return;
+        }
         if (!path.startsWith("/api/") || AuthPolicy.publicPath(path)) {
             chain.doFilter(request, response);
             return;

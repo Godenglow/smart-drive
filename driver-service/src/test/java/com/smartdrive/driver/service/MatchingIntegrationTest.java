@@ -268,7 +268,7 @@ class MatchingIntegrationTest {
             factory.setDataSource(source);
             factory.setConfiguration(config);
             notices = new SqlSessionTemplate(factory.getObject()).getMapper(OrderNoticeMapper.class);
-            var redisConfig = new RedisStandaloneConfiguration(System.getenv().getOrDefault("REDIS_HOST", "192.168.220.128"),
+            var redisConfig = new RedisStandaloneConfiguration(System.getenv().getOrDefault("REDIS_HOST", "127.0.0.1"),
                     Integer.parseInt(System.getenv().getOrDefault("REDIS_PORT", "6379")));
             redisConfig.setPassword(System.getenv("REDIS_PASSWORD"));
             redisFactory = new LettuceConnectionFactory(redisConfig);

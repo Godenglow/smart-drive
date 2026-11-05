@@ -117,6 +117,48 @@ test('列表空态、分页、错误保留与详情入口', async ({ page }) => 
   await expect(page.getByRole('heading', { name: '还没有这一程的记录' })).toBeVisible()
 })
 
+test('翻页失败保留当前页，刷新与再次翻页使用正确页码', async ({ page }) => {
+  let rejectNextPage = true
+  const requested: number[] = []
+  await page.route('**/api/orders/mine?*', route => {
+    const number = Number(new URL(route.request().url()).searchParams.get('page'))
+    requested.push(number)
+    if (number === 2 && rejectNextPage) return route.abort()
+    return route.fulfill({ json: { code: 0, data: { page: number, size: 10, total: 11,
+      items: [fixture('PAID', number === 1 ? 1601 : 1602)] } } })
+  })
+  await page.goto('/passenger/orders')
+  await expect(page.getByText('订单 #1601')).toBeVisible()
+  await page.getByRole('button', { name: '下一页' }).click()
+  await expect(page.getByRole('alert')).toContainText('无法连接')
+  await expect(page.getByText('第 1 页 / 共 2 页')).toBeVisible()
+  await expect(page.getByRole('button', { name: '上一页' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '下一页' })).toBeEnabled()
+  await page.getByRole('button', { name: '刷新订单' }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  expect(requested.at(-1)).toBe(1)
+  rejectNextPage = false
+  await page.getByRole('button', { name: '下一页' }).click()
+  await expect(page.getByText('订单 #1602')).toBeVisible()
+  expect(requested.at(-1)).toBe(2)
+})
+
+test.describe('订单时间使用浏览器时区', () => {
+  test.use({ timezoneId: 'Asia/Shanghai' })
+  test('UTC 无偏移、Z 和显式偏移时间显示为同一本地时间', async ({ page }) => {
+    for (const createdAt of ['2026-11-05T04:15:32', '2026-11-05T04:15:32Z', '2026-11-05T12:15:32+08:00']) {
+      const order = { ...fixture('PAID'), createdAt, updatedAt: createdAt }
+      await page.route('**/api/orders/mine?*', route => route.fulfill({ json: { code: 0,
+        data: { page: 1, size: 10, total: 1, items: [order] } } }))
+      await page.route('**/api/orders/1601', route => route.fulfill({ json: { code: 0, data: order } }))
+      await page.goto('/passenger/orders')
+      await expect(page.locator('time')).toHaveText('2026-11-05 12:15:32')
+      await page.getByRole('link', { name: /订单 #1601/ }).click()
+      await expect(page.locator('.order-metadata')).toContainText('2026-11-05 12:15:32')
+    }
+  })
+})
+
 for (const status of ['WAITING', 'ACCEPTED', 'IN_SERVICE', 'FINISHED', 'PAID', 'CANCELLED'] as OrderStatus[]) {
   test(`${status} 仅展示合法操作按钮`, async ({ page }) => {
     await page.route('**/api/orders/1601', route => route.fulfill({ json: { code: 0, data: fixture(status) } }))

@@ -3,6 +3,17 @@ package com.smartdrive.common.api.auth;
 public final class AuthPolicy {
     private AuthPolicy() {}
 
+    /** Current API paths contain only literal segments and numeric IDs. Reject alternate
+     * spellings before checking /api/: routing may decode escapes or remove matrix parameters. */
+    public static boolean canonicalPath(String path) {
+        if (path == null || !path.startsWith("/") || path.indexOf('%') >= 0
+                || path.indexOf(';') >= 0 || path.indexOf('\\') >= 0 || path.contains("//")) return false;
+        for (String segment : path.split("/")) {
+            if (segment.equals(".") || segment.equals("..")) return false;
+        }
+        return path.chars().noneMatch(character -> character <= 0x20 || character == 0x7f);
+    }
+
     public static boolean publicPath(String path) {
         return path.equals("/api/auth/register") || path.equals("/api/auth/login")
                 || path.equals("/actuator/health") || path.equals("/actuator/info")

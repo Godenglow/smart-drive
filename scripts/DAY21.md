@@ -4,7 +4,7 @@
 
 ## 运行
 
-四个服务、MySQL、Redis、RabbitMQ 和 Nacos 先按 README 启动。本机私有 `.env.local` 必须可用；脚本不输出密码或 JWT。需要 Python 标准库、PowerShell 7、MySQL CLI、JDK 21，Maven 用于修改后的回归和打包。
+四个服务、MySQL、Redis、RabbitMQ 和 Nacos 先按 README 启动。配置可通过进程环境或本机私有 `.env.local` 提供，显式进程环境优先；脚本不输出密码或 JWT。需要 Python 标准库、PowerShell 7、MySQL CLI、PATH 中可用的 JDK 21，Maven 用于修改后的回归和打包。首次运行前执行 `mvn.cmd -o -DskipTests package`，确保四个模块的 target JAR 均存在。
 
 ```powershell
 python -m unittest discover -s scripts -p 'test_day*_tools.py' -v
@@ -30,7 +30,7 @@ pwsh -NoProfile -File scripts/verify-day19.ps1 -IsolatePublisher
 
 若在自动化终端中将 `pwsh -File ...` 的输出重定向，Windows 子进程句柄可能使外层命令迟迟不返回。服务日志已显示 UP 时，应核实进程后结束卡住的外层启动器，并单独执行下一条命令，避免在同一条外部进程管道后串联压测。当前 PowerShell 会话也可直接调用 `& ./scripts/day21-runtime.ps1 ...`。
 
-`day21-runtime.ps1` 只停止已核实的本项目业务端口监听 Java 进程，从 `logs/day21-runtime/*.jar` 的独立副本启动，记录 JAR SHA256、进程、时间和非敏感配置。网关初始副本复用 Day20 已修复的稳定 JAR；其余模块从 target 复制。两次测量必须保持相同 JAR、负载、批大小和其他环境。
+`day21-runtime.ps1` 只停止已核实的本项目业务端口监听 Java 进程，从 `logs/day21-runtime/*.jar` 的独立副本启动，记录 JAR SHA256、进程、时间和非敏感配置。所有模块（含网关）的初始副本均从当前 target 复制，无需历史 logs 或 Day20 JAR；已有副本保留，`-Restore -RefreshJar` 可在测量之外刷新。两次测量必须保持相同 JAR、负载、批大小和其他环境。
 
 独立管理端口为 **127.0.0.1:18080–18083**，只暴露 health/info/metrics。业务端口仍为 8080–8083；在此性能运行模式下，健康检查迁移到管理端口，旧业务端口及网关健康转发暂不可用。验收脚本显式使用管理端口；测试结束应使用 `-Restore` 恢复常规健康端点（见脚本参数）。这不是业务接口变更。
 

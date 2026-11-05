@@ -13,6 +13,13 @@ export const statusNames: Record<OrderStatus, string> = {
 }
 export const terminal = (status: OrderStatus) => status === 'PAID' || status === 'CANCELLED'
 export const money = (value: number) => Number(value).toFixed(2)
+/** The API's offset-free LocalDateTime values represent the database's UTC session. */
+export function orderTime(value: string) {
+  const date = new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : value + 'Z')
+  if (Number.isNaN(date.getTime())) return '时间无效'
+  return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(date).replaceAll('/', '-')
+}
 export const orderApi = {
   create: (body: CreateOrder) => request<Order>('/api/orders', { method: 'POST', body }),
   mine: (page: number, signal?: AbortSignal) => request<OrderPage>(`/api/orders/mine?page=${page}&size=10`, { signal }),

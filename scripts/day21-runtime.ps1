@@ -9,11 +9,16 @@ $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 if ($RefreshJar -and -not $Restore) { throw '-RefreshJar requires -Restore (outside measurement)' }
 # Never print private environment values or put credentials in process arguments.
-Get-Content -LiteralPath (Join-Path $root '.env.local') | ForEach-Object {
-    if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
-        [Environment]::SetEnvironmentVariable($matches[1], $matches[2].Trim().Trim('"').Trim("'"), 'Process')
+$localEnv = Join-Path $root '.env.local'
+if (Test-Path -LiteralPath $localEnv) {
+    Get-Content -LiteralPath $localEnv | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$' -and
+            $null -eq [Environment]::GetEnvironmentVariable($matches[1], 'Process')) {
+            [Environment]::SetEnvironmentVariable($matches[1], $matches[2].Trim().Trim('"').Trim("'"), 'Process')
+        }
     }
 }
+$java = (Get-Command java.exe -ErrorAction Stop).Source
 $runtime = Join-Path $root 'logs/day21-runtime'
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
 $entries = @(@('account-service',8081),@('driver-service',8082),@('order-service',8083),@('gateway',8080))
@@ -21,18 +26,20 @@ foreach ($entry in $entries) {
     $name = $entry[0]; $port = [int]$entry[1]
     if ($Service -ne 'all' -and $Service -ne $name) { continue }
     $jar = Join-Path $runtime "$name.jar"
+    $source = Join-Path $root "$name/target/$name-1.0.0-SNAPSHOT.jar"
+    # Resolve build inputs before stopping a healthy service. No historical logs are required.
+    if (($RefreshJar -or -not (Test-Path -LiteralPath $jar)) -and -not (Test-Path -LiteralPath $source)) {
+        throw "Missing build JAR: $name; run mvn.cmd -DskipTests package first"
+    }
+    if (-not (Test-Path -LiteralPath $jar)) {
+        Copy-Item -LiteralPath $source -Destination $jar
+    }
     $listener = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($listener) {
         $ownerId = $listener[0].OwningProcess
         $process = Get-CimInstance Win32_Process -Filter "ProcessId=$ownerId"
-        if ($process.Name -ne 'java.exe' -or $process.CommandLine -notlike '*SmartDrive*' -and
-            $process.CommandLine -notlike "*${name}/target/*") { throw "Unexpected process on port $port" }
-        # Stable executable copies survive subsequent Maven builds.
-        if (-not (Test-Path -LiteralPath $jar)) {
-            $source = if ($name -eq 'gateway') { Join-Path $root 'logs/day20-runtime/gateway.jar' }
-                      else { Join-Path $root "$name/target/$name-1.0.0-SNAPSHOT.jar" }
-            Copy-Item -LiteralPath $source -Destination $jar
-        }
+        if ($process.Name -ne 'java.exe' -or $process.CommandLine -notlike "*$root*" -or
+            $process.CommandLine -notlike "*$name*.jar*") { throw "Unexpected process on port $port" }
         Stop-Process -Id $ownerId
         Start-Sleep -Seconds 2
     }
@@ -41,7 +48,7 @@ foreach ($entry in $entries) {
     }
     if (-not (Test-Path -LiteralPath $jar)) { throw "Missing runtime jar: $name" }
     $metricPort = $port + 10000
-    $arguments = @('-jar', $jar)
+    $arguments = @('-jar', "`"$jar`"")
     if (-not $Restore) {
         $arguments += @(
         '--management.server.address=127.0.0.1', "--management.server.port=$metricPort",
@@ -55,7 +62,7 @@ foreach ($entry in $entries) {
         $arguments += '--smartdrive.outbox.batch-size=50'
     }
     $runTag = Get-Date -Format 'yyyyMMdd-HHmmss'
-    $started = Start-Process -FilePath 'D:/java/bin/java.exe' -ArgumentList $arguments -WorkingDirectory $root `
+    $started = Start-Process -FilePath $java -ArgumentList $arguments -WorkingDirectory $root `
         -WindowStyle Hidden -PassThru -RedirectStandardOutput "$runtime/$name-$runTag.out.log" `
         -RedirectStandardError "$runtime/$name-$runTag.err.log"
     $record = @{service=$name; pid=$started.Id; port=$port; metricsPort=$metricPort;

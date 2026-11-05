@@ -29,6 +29,7 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
+        if (!AuthPolicy.canonicalPath(path)) return reject(exchange, ErrorCode.INVALID_PARAM);
         if (!path.startsWith("/api/") || AuthPolicy.publicPath(path)) return chain.filter(exchange);
         Principal principal;
         try {

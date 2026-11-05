@@ -25,7 +25,7 @@ class DriverRedisIntegrationTest {
     @EnabledIfEnvironmentVariable(named = "SMARTDRIVE_REDIS_INTEGRATION", matches = "true")
     void nearbyFiltersFarAndExpiredDriversBeforeFivePersonLimit() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(
-                System.getenv().getOrDefault("REDIS_HOST", "192.168.220.128"),
+                System.getenv().getOrDefault("REDIS_HOST", "127.0.0.1"),
                 Integer.parseInt(System.getenv().getOrDefault("REDIS_PORT", "6379")));
         config.setPassword(System.getenv("REDIS_PASSWORD"));
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config);

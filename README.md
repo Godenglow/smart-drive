@@ -4,7 +4,7 @@
 
 - 开发计划与每日记录位于 `项目文档/每日文档/`；完整规格文档 `项目文档/代驾项目开发文档.md` 仍由本机保存。
 - 源码学习见 `项目文档/程序解读/`，最新为 [Day22 最终验收与演示数据隔离](项目文档/程序解读/Day22-最终验收与演示数据隔离.md)，说明专用批次、精确重置、历史数据指纹、测试隔离与录屏证据。
-- 当前进度：**Day22 最终验收与交付已完成，22 天计划累计完成 100%**。工具 44/44、真实中间件后端 99/99、21 项真实 HTTP 和并发冒烟通过；浏览器 75 个不同用例共 199 次执行全部通过，三会话录屏可解码。专用演示数据重置、历史七表指纹、Day20/21 原始压测证据审计通过；原有 4 账号/6 订单等数据保持不变。详见 [Day22 检验报告](项目文档/检验报告/Day22-检验报告.md)与[交付验收 JSON](项目文档/检验报告/数据/Day22-交付验收结果.json)。
+- 当前进度：**Day22 交付后完成审查修复**。当前验收口径为工具 55 项、真实中间件后端 104 项、真实 HTTP 29 项及并发冒烟；浏览器 79 个不同用例，四组验收共 209 次执行。新增编码路径、415、UTF-8 密码边界、运行 JAR 一致性、时间显示及翻页恢复回归；Day10/11 已适配真实 MQ 通知。历史报告保留原批次计数，当前修复与验证见 [审查修复记录](scripts/BUGFIXES-20261105.md)。
 
 ## 最终交付入口（Day22）
 
@@ -24,8 +24,8 @@
 | Spring Cloud | 2025.0.0 | BOM 统一管理 |
 | Spring Cloud Alibaba | 2025.0.0.0 | BOM 统一管理（nacos-client 3.x） |
 | MyBatis | mybatis-spring-boot-starter 3.0.5 | 父 POM 统一锁定 |
-| springdoc-openapi | 2.8.14 | WebMVC UI Starter；2.8.15+ 在 spring-web 6.2 上启动报错（定位记录见本地 `文档/Day4-账户建库与注册接口.md`） |
-| MySQL / Redis / RabbitMQ / Nacos | 8.3 / 7.2.5 / 4.3.5 / 3.0.3 | 连接方式见本地 `文档/Day1-环境检查表.md`（不入库） |
+| springdoc-openapi | 2.8.14 | WebMVC UI Starter；2.8.15+ 在 spring-web 6.2 上启动报错（定位记录见本地 `项目文档/每日文档/Day4-账户建库与注册接口.md`） |
+| MySQL / Redis / RabbitMQ / Nacos | 8.3 / 7.2.5 / 4.3.5 / 3.0.3 | 连接方式见本地 `项目文档/每日文档/Day1-环境检查表.md` |
 | Vue / TypeScript / Vite | 3.5.44 / 5.9.3 / 7.3.7 | Vue Router 4.6.4；Node.js 22.12+；依赖由 `web-app/package-lock.json` 锁定 |
 
 > 版本对应关系依据 [Spring Cloud Alibaba 官方版本说明](https://sca.aliyun.com/en/docs/2025.x/overview/version-explain/)：SCA 2025.0.0.0 ↔ Spring Cloud 2025.0.0 ↔ Spring Boot 3.5.0，不混用 Boot 4 / Cloud 2025.1 / SCA 2025.1。
@@ -74,11 +74,12 @@ mvn.cmd clean install -DskipTests    :: 同时安装到本地仓库（IDE 或单
 - `POST /api/auth/login`：`{"phone":"13800138000","password":"Passw0rd!23"}`，成功返回 `Result.data.accessToken / expiresAt / role`，JWT 有效期两小时。
 - `GET /api/users/me`：请求头 `Authorization: Bearer <accessToken>`，返回当前账户的 `userId / phone / role`。
 - 缺失、过期或签名错误的令牌返回 `401 UNAUTHORIZED`；乘客访问司机接口或司机执行乘客专属操作返回 `403 FORBIDDEN`。网关与直连业务服务都执行相同的验签和路径角色规则；订单归属等业务级权限在订单接口实现时校验。
+- 网关与直连服务在鉴权前统一拒绝含百分号编码、矩阵参数、反斜杠、重复斜杠或 `.`/`..` 段的路径，返回 `400 INVALID_PARAM`；当前 API 使用字面路径和数字 ID，查询参数不受该限制。注册密码为 8–64 位，注册和登录均限制 UTF-8 不超过 72 字节；超限返回 400，登录请求内容类型不支持时返回 415。
 - 自动化验证：`mvn.cmd clean test`，覆盖账户查询、错误密码、伪造和过期令牌、网关与业务服务的角色拦截。
 
 ## Day 6 司机接口
 
-先执行 `db/driver_db.sql`，为项目数据库账号授予 `driver_db` 权限，再设置 `SMARTDRIVE_DB_PASSWORD`、`JWT_SECRET` 和 `REDIS_HOST`（默认 `192.168.220.128`）；Redis 若需要密码，设置 `REDIS_PASSWORD`。`driver-service` 使用 `driver_db`，不会清理 Redis 其他项目的数据。
+先执行 `db/driver_db.sql`，为项目数据库账号授予 `driver_db` 权限，再设置 `SMARTDRIVE_DB_PASSWORD`、`JWT_SECRET` 和 `REDIS_HOST`（统一默认 `127.0.0.1`，远程 Redis 请在 `.env.local` 或进程环境中显式配置）；Redis 若需要密码，设置 `REDIS_PASSWORD`。`driver-service` 使用 `driver_db`，不会清理 Redis 其他项目的数据。
 
 以下接口均需司机 JWT；经 Gateway 的地址为 `http://localhost:8080`：
 
@@ -145,7 +146,7 @@ mvn.cmd clean install -DskipTests    :: 同时安装到本地仓库（IDE 或单
 
 - `POST /api/orders` 在同一 MySQL 事务中写入 `ride_order` 与 `outbox_event`；任一步失败均回滚。乘客 ID + requestId 的并发幂等继续生效，同一订单只生成一个 `order.created` 事件。已有 `db/order_db.sql` 已包含 outbox 表，无需重建数据。
 - 自动声明 durable topic exchange `ride.events`、绑定 `order.created` 的 durable queue `driver.matching.q`，以及 `ride.events.dlx` → `driver.matching.dlq` 死信链路。消息为持久化 JSON，携带 `eventId/type/orderId/pickupLng/pickupLat/occurredAt`，`message_id=eventId`。
-- 发布器默认每批最多 50 条、每轮结束后等待 5 秒；逐条用 MySQL `FOR UPDATE SKIP LOCKED` 持锁，等待 correlated broker confirm，且必须没有 mandatory return 才将事件置为 `SENT`。连接失败、NACK、无路由、超时均保留 `NEW`，累计 `attempts`，下轮重试；确认等待默认上限 5 秒，连接超时 3 秒。
+- 发布器默认每批最多 50 条、每轮结束后等待 1 秒；逐条用 MySQL `FOR UPDATE SKIP LOCKED` 持锁，等待 correlated broker confirm，且必须没有 mandatory return 才将事件置为 `SENT`。连接失败、NACK、无路由、超时均保留 `NEW`，累计 `attempts`，下轮重试；确认等待默认上限 5 秒，连接超时 3 秒。
 - RabbitMQ 连接由 `RABBITMQ_HOST/PORT/USER/PASSWORD/VHOST` 配置，默认本机 `localhost:5672`、`guest/guest`、`/`，仅用于本地演示。发布参数可用 `SMARTDRIVE_OUTBOX_ENABLED`、`SMARTDRIVE_OUTBOX_POLL_INTERVAL_MS`、`SMARTDRIVE_OUTBOX_BATCH_SIZE`、`SMARTDRIVE_OUTBOX_CONFIRM_TIMEOUT_MS` 覆盖。关闭发布器仍会保存 outbox 事件。
 - 消息确认后、数据库提交前崩溃可能重发同一 eventId；这属于至少一次发送，由 Day 13 消费者事务去重。Day 12 阶段积压的消息会在司机消费者启动后处理。MQ 不可用不阻断订单写库；Rabbit 健康检查会显示 `DOWN`，不能把健康状态直接等同于创建接口不可用。
 - 配置本机凭据后，开启 `SMARTDRIVE_MYSQL_INTEGRATION=true`、`SMARTDRIVE_REDIS_INTEGRATION=true`、`SMARTDRIVE_RABBITMQ_INTEGRATION=true`，执行 `mvn.cmd -o test`：本次 **78/78** 通过。Rabbit 集成测试通过本机管理 API（默认 `http://localhost:15672`，可用 `RABBITMQ_MANAGEMENT_URL` 覆盖）创建/删除 UUID 独立 vhost，需要管理权限；不会操作共享队列中的消息。
@@ -236,7 +237,7 @@ mvn.cmd clean install -DskipTests    :: 同时安装到本地仓库（IDE 或单
 
 > 以上为历史虚构账号，Day22 保留其数据。新演示请使用 `scripts/demo-data.py` 生成专用批次，从本机 `logs/day22/demo-accounts.local.json` 读取随机凭据；reset 不接管或清空上述账号。
 
-> ⚠️ Nacos 3.x 控制台默认占 8080，与规格中 Gateway 的 8080 冲突。本机已在 `D:\devtools\nacos\nacos\conf\application.properties` 将 `nacos.console.port` 改为 **8090**（2026-10-05，验证记录见本地 `文档/Day2-工程搭建.md`）。Day 1 检查表里写的“控制台 8080”自此作废。
+> ⚠️ Nacos 3.x 控制台默认占 8080，与规格中 Gateway 的 8080 冲突。本机已在 `D:\devtools\nacos\nacos\conf\application.properties` 将 `nacos.console.port` 改为 **8090**（2026-10-05，验证记录见本地 `项目文档/每日文档/Day2-工程搭建.md`）。Day 1 检查表里写的“控制台 8080”自此作废。
 
 ## 配置与安全约定
 

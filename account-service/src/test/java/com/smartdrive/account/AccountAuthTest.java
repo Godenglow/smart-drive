@@ -79,6 +79,46 @@ class AccountAuthTest {
     }
 
     @Test
+    void unsupportedLoginContentTypeReturns415() throws Exception {
+        mvc.perform(post("/api/auth/login").contentType("text/plain").content("invalid"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+        verifyNoInteractions(accountMapper);
+    }
+
+    @Test
+    void oversizedUtf8AndCharacterPasswordsAreClientErrorsForRegistrationAndLogin() throws Exception {
+        for (String password : new String[]{"中".repeat(25), "a".repeat(65), "😀".repeat(19), "中".repeat(24) + "a"}) {
+            String body = mapper.writeValueAsString(java.util.Map.of(
+                    "phone", "13800138000", "password", password, "role", "PASSENGER"));
+            for (String endpoint : new String[]{"register", "login"}) {
+                mvc.perform(post("/api/auth/" + endpoint).contentType("application/json").content(body))
+                        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_PARAM"));
+            }
+        }
+        verifyNoInteractions(accountMapper);
+    }
+
+    @Test
+    void passwordsAtUtf8ByteAndCharacterLimitsCanRegisterAndLogin() throws Exception {
+        for (String password : new String[]{"中".repeat(24), "😀".repeat(18), "a".repeat(64)}) {
+            reset(accountMapper);
+            when(accountMapper.insert(any())).thenAnswer(invocation -> {
+                Account account = invocation.getArgument(0);
+                account.setId(42L);
+                when(accountMapper.selectByPhone(account.getPhone())).thenReturn(account);
+                return 1;
+            });
+            String body = mapper.writeValueAsString(java.util.Map.of(
+                    "phone", "13800138000", "password", password, "role", "PASSENGER"));
+            mvc.perform(post("/api/auth/register").contentType("application/json").content(body))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.userId").value(42));
+            mvc.perform(post("/api/auth/login").contentType("application/json").content(body))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.accessToken").isNotEmpty());
+        }
+    }
+
+    @Test
     void missingExpiredAndForgedTokensReturn401() throws Exception {
         String valid = codec.issue(11L, "PASSENGER", now.plusSeconds(3600));
         int signatureStart = valid.lastIndexOf('.') + 1;

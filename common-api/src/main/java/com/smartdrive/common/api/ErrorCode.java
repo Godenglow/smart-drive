@@ -14,6 +14,8 @@ public enum ErrorCode {
     FORBIDDEN(403, "无权限访问"),
     NOT_FOUND(404, "资源不存在"),
     METHOD_NOT_ALLOWED(405, "请求方法不支持"),
+    NOT_ACCEPTABLE(406, "响应格式不支持"),
+    UNSUPPORTED_MEDIA_TYPE(415, "请求内容类型不支持"),
     PHONE_ALREADY_EXISTS(409, "手机号已注册"),
     DRIVER_OFFLINE(409, "司机未上线或在线状态已过期"),
     NO_DRIVER_NEARBY(409, "附近暂无在线司机"),

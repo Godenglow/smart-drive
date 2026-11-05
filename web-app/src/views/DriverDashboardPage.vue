@@ -9,10 +9,10 @@ import { session } from '../session'
 const profile = ref<Profile | null>(null)
 const online = ref<boolean | null>(null)
 const lng = ref<string | number>('117.215'), lat = ref<string | number>('39.136')
-const storageKey = `smartdrive.driver-location.${session.account?.userId}`
+const storageKey = session.account?.userId == null ? null : `smartdrive.driver-location.${session.account.userId}`
 let confirmed: Location | null = null
 try {
-  const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null')
+  const saved = JSON.parse((storageKey ? sessionStorage.getItem(storageKey) : null) || 'null')
   if (saved && typeof saved.lng === 'number' && typeof saved.lat === 'number') confirmed = validLocation(String(saved.lng), String(saved.lat))
   if (confirmed) { lng.value = String(confirmed.lng); lat.value = String(confirmed.lat) }
 } catch { /* 存储不可用时仍可在当前页面上线。 */ }
@@ -36,7 +36,7 @@ const { loading, error, trace, updatedAt, refresh } = usePolling(async signal =>
 })
 function remember(point: Location) {
   confirmed = point
-  try { sessionStorage.setItem(storageKey, JSON.stringify(point)) } catch { /* 仅影响刷新后的自动心跳恢复。 */ }
+  try { if (storageKey) sessionStorage.setItem(storageKey, JSON.stringify(point)) } catch { /* 仅影响刷新后的自动心跳恢复。 */ }
 }
 async function mutate(action: 'online' | 'offline' | 'location', heartbeat = false, signal?: AbortSignal) {
   if (working.value || disposed) return

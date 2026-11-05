@@ -1,5 +1,5 @@
 #requires -Version 7.0
-param([switch]$IsolatePublisher)
+param([switch]$IsolatePublisher = $true)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $localEnv = Join-Path $projectRoot '.env.local'
@@ -43,9 +43,22 @@ s.require(s.number("SELECT COUNT(*) FROM order_db.outbox_event WHERE status='NEW
         $listener = Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction Stop
         $ownerId = $listener[0].OwningProcess
         $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$ownerId"
-        if ($owner.Name -ne 'java.exe' -or $owner.CommandLine -notlike '*SmartDrive*order-service*') {
+        if ($owner.Name -ne 'java.exe' -or $owner.CommandLine -notlike "*$projectRoot*" -or
+            $owner.CommandLine -notlike '*order-service*.jar*') {
             throw 'Unexpected order-service process identity'
         }
+        $jarArgument = [regex]::Match($owner.CommandLine, '(?:^|\s)-jar\s+(?:"([^"]+)"|(\S+))')
+        if (-not $jarArgument.Success) { throw 'Cannot identify order-service recovery JAR' }
+        $runningJar = if ($jarArgument.Groups[1].Success) { $jarArgument.Groups[1].Value } else { $jarArgument.Groups[2].Value }
+        $runningJar = [IO.Path]::GetFullPath($runningJar, $projectRoot)
+        if (-not $runningJar.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Order-service recovery JAR is outside the workspace'
+        }
+        $recoveryDirectory = Join-Path $projectRoot 'logs/day19-recovery'
+        $null = New-Item -ItemType Directory -Force -Path $recoveryDirectory
+        $recoveryJar = Join-Path $recoveryDirectory 'order-service.jar'
+        Copy-Item -LiteralPath $runningJar -Destination $recoveryJar -Force
+        $report.recoveryJarSha256 = (Get-FileHash -LiteralPath $recoveryJar -Algorithm SHA256).Hash
         Stop-Process -Id $ownerId
         $publisherSuspended = $true
         $report.publisherIsolated = $true
@@ -78,7 +91,7 @@ s.require(s.number("SELECT COUNT(*) FROM order_db.outbox_event WHERE status='NEW
     }
     if ($report.failures -ne 0 -or $report.errors -ne 0 -or $report.skipped -ne 0) { throw 'Real regression must have zero failures, errors and skips' }
     if ($publisherSuspended) {
-        & (Join-Path $PSScriptRoot 'start-local.ps1')
+        & (Join-Path $PSScriptRoot 'start-local.ps1') -Service order-service -RecoveryJar $recoveryJar
         $publisherSuspended = $false
     }
     & python scripts/verify-day19.py 2>&1 | Tee-Object 'logs/day19-live.log'
@@ -88,12 +101,15 @@ s.require(s.number("SELECT COUNT(*) FROM order_db.outbox_event WHERE status='NEW
     $report.liveRunId = $live.runId
     $report.passed = $true
 } finally {
-    if ($publisherSuspended) {
-        & (Join-Path $PSScriptRoot 'start-local.ps1')
+    try {
+        if ($publisherSuspended) {
+            & (Join-Path $PSScriptRoot 'start-local.ps1') -Service order-service -RecoveryJar $recoveryJar
+        }
+    } finally {
+        $report.finishedAt = (Get-Date).ToString('o')
+        $report | ConvertTo-Json -Depth 8 | Set-Content 'logs/day19-verification.json' -Encoding utf8
+        foreach ($flag in $flags) { [Environment]::SetEnvironmentVariable($flag, $previous[$flag], 'Process') }
+        Pop-Location
     }
-    $report.finishedAt = (Get-Date).ToString('o')
-    $report | ConvertTo-Json -Depth 8 | Set-Content 'logs/day19-verification.json' -Encoding utf8
-    foreach ($flag in $flags) { [Environment]::SetEnvironmentVariable($flag, $previous[$flag], 'Process') }
-    Pop-Location
 }
 $report | ConvertTo-Json -Depth 8

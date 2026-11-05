@@ -5,12 +5,15 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $localEnv = Join-Path $projectRoot '.env.local'
 if (Test-Path $localEnv) {
     Get-Content $localEnv | ForEach-Object {
-        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$' -and
+            $null -eq [Environment]::GetEnvironmentVariable($matches[1], 'Process')) {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2].Trim().Trim('"').Trim("'"), 'Process')
         }
     }
 }
+$previousMysqlPassword = $env:MYSQL_PWD
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
+. (Join-Path $PSScriptRoot 'live-order-fixtures.ps1')
 $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smartdrive' }
 $checks = [Collections.Generic.List[object]]::new()
 $accounts = [Collections.Generic.List[object]]::new()
@@ -48,10 +51,11 @@ function New-Order($passenger) {
     $place = @{name="Day10-$runId";lng=117.215;lat=39.136}
     $created = Api Post '/api/orders' $passenger.headers @{requestId=[Guid]::NewGuid().ToString();pickup=$place;dropoff=$place} 201
     $orders.Add([long]$created.id)
+    Wait-OrderMatching @([long]$created.id)
     return [long]$created.id
 }
 function Notice([long]$order, [long]$driver) {
-    $null = Sql "INSERT INTO driver_db.order_notice(order_id,driver_id) VALUES($order,$driver)"
+    Assert-True ((Sql "SELECT COUNT(*) FROM driver_db.order_notice WHERE order_id=$order AND driver_id=$driver") -eq 1) 'Real matching did not notify the expected driver'
 }
 function Assert-True($condition, [string]$message) {
     if (-not $condition) { throw $message }
@@ -66,6 +70,7 @@ try {
     $passenger = Account PASSENGER
     $d1 = Account DRIVER
     $d2 = Account DRIVER
+    $unnotified = Account DRIVER
     foreach ($driver in @($d1,$d2)) {
         $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Day10-$runId"} 200
         $null = Api Put '/api/drivers/me/online' $driver.headers @{lng=117.215;lat=39.136} 200
@@ -73,7 +78,7 @@ try {
     $id = New-Order $passenger
     $null = Api Post "/api/orders/$id/accept" @{} $null 401 UNAUTHORIZED
     $null = Api Post "/api/orders/$id/accept" $passenger.headers $null 403 FORBIDDEN
-    $null = Api Post "/api/orders/$id/accept" $d1.headers $null 403 FORBIDDEN
+    $null = Api Post "/api/orders/$id/accept" $unnotified.headers $null 403 FORBIDDEN
     Notice $id $d1.id
     $null = Api Put '/api/drivers/me/offline' $d1.headers $null 200
     $null = Api Post "/api/orders/$id/accept" $d1.headers $null 409 DRIVER_OFFLINE
@@ -96,7 +101,10 @@ try {
     $loser = @($d1,$d2) | Where-Object id -ne $winnerId
     $detail = Api Get "/api/orders/$id" $winner.headers $null 200
     Assert-True ($detail.status -eq 'ACCEPTED' -and $detail.driverId -eq $winnerId) 'Accepted ownership mismatch'
-    $null = Api Get "/api/orders/$id" $loser.headers $null 403 FORBIDDEN
+    $candidate = Api Get "/api/orders/$id" $loser.headers $null 200
+    Assert-True ($candidate.status -eq 'ACCEPTED' -and $null -eq $candidate.passengerId -and
+                 $null -eq $candidate.driverId -and $null -eq $candidate.requestId) 'Candidate view leaked private IDs'
+    $null = Api Get "/api/orders/$id" $unnotified.headers $null 403 FORBIDDEN
     $null = Api Post "/api/orders/$id/accept" $winner.headers $null 409 ORDER_ALREADY_TAKEN
     $null = Api Post "/api/orders/$id/cancel" $passenger.headers $null 409 ORDER_NOT_WAITING
     $active = [long](Sql "SELECT COUNT(*) FROM order_db.driver_active_order WHERE order_id=$id AND driver_id=$winnerId")
@@ -123,12 +131,15 @@ try {
     Assert-True ($null -ne $doc.paths.'/api/orders/{id}/accept'.post) 'OpenAPI accept endpoint is missing'
     $report = [PSCustomObject]@{time=(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz');runId=$runId;orderIds=$orders.ToArray();httpRace=$race;checks=$checks.ToArray();internalGatewayStatus=[int]$internal.StatusCode;internalDirectStatus=[int]$direct.StatusCode;openApiAccept=$true}
 } finally {
+    try {
+    Wait-OrderMatching $orders.ToArray()
     foreach ($account in $accounts) {
         if ($account.role -eq 'DRIVER' -and $account.headers.Authorization) {
             $null = Api Put '/api/drivers/me/offline' $account.headers $null 200
         }
     }
     foreach ($id in $orders) {
+        $null = Sql "DELETE FROM driver_db.processed_order_event WHERE order_id=$id; DELETE FROM order_db.outbox_event WHERE aggregate_id=$id;"
         foreach ($account in $accounts) {
             $null = Sql "DELETE FROM driver_db.order_notice WHERE order_id=$id AND driver_id=$($account.id); DELETE FROM order_db.driver_active_order WHERE order_id=$id AND driver_id=$($account.id);"
         }
@@ -137,6 +148,7 @@ try {
     foreach ($account in $accounts) {
         $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($account.id) AND display_name='Day10-$runId'; DELETE FROM account_db.account WHERE id=$($account.id) AND phone='$($account.phone)';"
     }
+    } finally { $env:MYSQL_PWD = $previousMysqlPassword }
 }
 $logDir = Join-Path $projectRoot 'logs'
 $null = New-Item -ItemType Directory -Force -Path $logDir

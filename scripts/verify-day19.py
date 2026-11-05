@@ -7,7 +7,7 @@ import traceback
 from urllib.parse import quote
 import uuid
 
-from day19_support import (CONFIG, ROOT, Fixture, api, load_env, mq, number, queue, require,
+from day19_support import (CONFIG, ROOT, Fixture, api, gateway, http, load_env, mq, number, queue, require,
                            save, snapshot, sql, stamp, wait_until)
 
 
@@ -28,6 +28,19 @@ def live(fixture):
     check("invalid token", "GET", "/api/orders/mine", "invalid", expected=401, code="UNAUTHORIZED")
     check("passenger cannot go online", "PUT", "/api/drivers/me/online", p, CONFIG["pickup"], 403, "FORBIDDEN")
     check("driver cannot create order", "POST", "/api/orders", d, {}, 403, "FORBIDDEN")
+    for base in (gateway(), 'http://127.0.0.1:8082'):
+        for path in ('/api/%64rivers/me/status', '/api/drivers;x=1/me/status'):
+            status, response, _ = http('GET', base + path, headers={'Authorization': 'Bearer ' + p})
+            require(status == 400 and response.get('code') == 'INVALID_PARAM', 'Alternate path bypassed authorization')
+            checks.append({'check': 'reject alternate driver path', 'base': base, 'path': path, 'httpStatus': status})
+    for base in (gateway(), 'http://127.0.0.1:8081'):
+        status, response, _ = http('POST', base + '/api/auth/login', b'x', {'Content-Type': 'text/plain'})
+        require(status == 415 and response.get('code') == 'UNSUPPORTED_MEDIA_TYPE', 'Unsupported login content type returned wrong status')
+        checks.append({'check': 'unsupported login content type', 'base': base, 'httpStatus': status})
+    for action in ('register', 'login'):
+        check('reject oversized UTF-8 password on ' + action, 'POST', '/api/auth/' + action,
+              body={'phone': passenger['phone'], 'password': '中' * 25, 'role': 'PASSENGER'},
+              expected=400, code='INVALID_PARAM')
     request_id = str(uuid.uuid5(uuid.UUID(fixture.run_id), "http-idempotency"))
     fixture.data["apiRequests"].append(request_id)
     fixture.save()

@@ -18,7 +18,7 @@ Push-Location $root
 try {
     Step 'tools' { python -m unittest discover -s scripts -p 'test_day*_tools.py' -v }
     Step 'package' { mvn.cmd -o -DskipTests package }
-    Step 'startup' { & scripts/start-local.ps1 }
+    Step 'startup' { & scripts/start-local.ps1 -Restart }
     Step 'historical-baseline' { python scripts/audit-day22.py --directory "logs/day22/$runId" --baseline }
     Step 'demo-reset' { python scripts/demo-data.py reset }
     Step 'api-example' { python scripts/demo-api.py }

@@ -8,6 +8,7 @@ import com.smartdrive.common.api.ApiException;
 import com.smartdrive.common.api.ErrorCode;
 import com.smartdrive.common.api.auth.JwtCodec;
 import com.smartdrive.account.dto.LoginResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -35,6 +36,7 @@ public class AccountService {
      * @return 新账户 userId
      */
     public long register(RegisterRequest request) {
+        validatePasswordLength(request.password());
         Role role = Role.parse(request.role());
         if (accountMapper.selectByPhone(request.phone()) != null) {
             throw new ApiException(ErrorCode.PHONE_ALREADY_EXISTS);
@@ -58,11 +60,20 @@ public class AccountService {
     }
 
     public LoginResponse login(String phone, String password) {
+        validatePasswordLength(password);
         Account account = accountMapper.selectByPhone(phone);
         if (account == null || !passwordEncoder.matches(password, account.getPasswordHash())) {
             throw new ApiException(ErrorCode.UNAUTHORIZED, "手机号或密码错误");
         }
         Instant expiresAt = Instant.now().plus(2, ChronoUnit.HOURS);
         return new LoginResponse(jwtCodec.issue(account.getId(), account.getRole(), expiresAt), expiresAt, account.getRole());
+    }
+
+    private static void validatePasswordLength(String password) {
+        // BCrypt's limit is bytes, while @Size on the DTO counts UTF-16 characters.
+        if (password == null || password.length() > 64
+                || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ApiException(ErrorCode.INVALID_PARAM, "密码最多 64 位，且 UTF-8 编码不能超过 72 字节");
+        }
     }
 }

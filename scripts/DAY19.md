@@ -8,7 +8,7 @@
 pwsh -NoProfile -File scripts/verify-day19.ps1
 ```
 
-入口会启用并最终恢复三个 `SMARTDRIVE_*_INTEGRATION` 开关，执行工具自检、`mvn.cmd -o test`、真实 HTTP/MQ 验收与两类抢单的 3 并发各 2 轮冒烟。仅删除旧 Surefire XML，不运行 `clean`，避免 Windows 中运行的 JAR 被锁定。检查报告新鲜度、必需的 8 个集成套件和全仓零失败/错误/跳过。离线依赖未缓存时先按 README 完成 Maven 构建。
+入口默认隔离运行中的 Outbox 发布器（兼容显式 `-IsolatePublisher`）：确认 outbox/MQ 已收敛并核实本项目订单服务身份后，临时停止 order-service，避免测试事件被运行中的发布器发送到真实司机消费者。Maven 结束或失败时自动恢复服务，再进入真实 HTTP 验收。入口会启用并最终恢复三个 `SMARTDRIVE_*_INTEGRATION` 开关，执行工具自检、`mvn.cmd -o test`、真实 HTTP/MQ 验收与两类抢单的 3 并发各 2 轮冒烟。仅删除旧 Surefire XML，不运行 `clean`，避免 Windows 中运行的 JAR 被锁定。检查报告新鲜度、必需的 8 个集成套件和全仓零失败/错误/跳过。离线依赖未缓存时先按 README 完成 Maven 构建。
 
 真实 HTTP 验收创建 2 位乘客、3 位司机及 3 笔固定抢单订单、1 笔真实 MQ 订单。8 个相同 requestId 请求必须落一单、一事件；经 Gateway 覆盖鉴权、越权、候选隐私、状态机、抢单冲突、重复履约与支付；真实事件重复发布两次，等待 ACK 后核对通知与消费记录不增加。验收结束清理本批数据并复查。
 

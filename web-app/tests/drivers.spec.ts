@@ -2,6 +2,17 @@ import { test, expect } from '@playwright/test'
 import { driverMock } from './driver-helpers'
 import { fixture, signedIn } from './order-helpers'
 
+for (const status of ['FINISHED', 'PAID'] as const) {
+  test(`候选司机查看 ${status} 订单不会收到本人已完成服务的提示`, async ({ page }) => {
+    await driverMock(page)
+    await page.route('**/api/orders/1601', route => route.fulfill({ json: { code: 0, data: fixture(status) } }))
+    await page.goto('/driver/orders/1601')
+    await expect(page.getByRole('heading', { name: '订单已被其他司机接走，请返回工作台查看其他订单。' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '开始服务' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '完成服务' })).toHaveCount(0)
+  })
+}
+
 test('首次使用先保存资料；校验、失败保留输入、保存及刷新恢复', async ({ page }) => {
   const model = await driverMock(page)
   model.profile = null

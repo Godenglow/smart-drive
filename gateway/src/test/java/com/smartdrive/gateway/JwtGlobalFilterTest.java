@@ -6,6 +6,7 @@ import com.smartdrive.gateway.filter.JwtGlobalFilter;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.http.HttpStatus;
@@ -45,12 +46,31 @@ class JwtGlobalFilterTest {
         assertEquals(HttpStatus.OK, call("/api/auth/login", null).getResponse().getStatusCode());
     }
 
+    @Test
+    void gatewayRejectsAlternatePathSpellingsBeforeAuthenticationAndForwarding() {
+        String passenger = codec.issue(1, "PASSENGER", now.plusSeconds(60));
+        String driver = codec.issue(2, "DRIVER", now.plusSeconds(60));
+        for (String path : new String[]{"/api/drivers;x=1/me/profile", "/api/%64rivers/me/online",
+                "/%61pi/drivers/me/location", "/api;x=1/drivers/me/notices",
+                "/api/drivers/me/../me/status", "/api//drivers/me/status",
+                "/api/drivers%2fme/notices", "/api/%2564rivers/me/notices",
+                "/api/orders/7/accept;x=1", "/api/orders/7/%61ccept"}) {
+            for (String token : new String[]{null, passenger, driver}) {
+                assertEquals(HttpStatus.BAD_REQUEST, call(path, token).getResponse().getStatusCode(), path);
+            }
+        }
+        assertEquals(HttpStatus.OK, call("/api/users/me?name=%E4%B8%AD;x=1", passenger)
+                .getResponse().getStatusCode());
+    }
+
     private MockServerWebExchange call(String path, String token) {
         return call(filter, path, token);
     }
 
     private MockServerWebExchange call(JwtGlobalFilter target, String path, String token) {
-        MockServerHttpRequest.BaseBuilder<?> request = MockServerHttpRequest.get(path);
+        // URI overload preserves raw escapes; the String builder would escape '%' again.
+        MockServerHttpRequest.BaseBuilder<?> request = MockServerHttpRequest.method(
+                org.springframework.http.HttpMethod.GET, URI.create(path));
         if (token != null) request.header("Authorization", "Bearer " + token);
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         GatewayFilterChain chain = ignored -> {

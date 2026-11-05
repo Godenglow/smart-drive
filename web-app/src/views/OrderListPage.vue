@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { money, orderApi, statusNames, type OrderPage } from '../orders'
+import { money, orderApi, orderTime, statusNames, type OrderPage } from '../orders'
 import { usePolling } from '../polling'
 import { session } from '../session'
 const driver = session.account?.role === 'DRIVER'
@@ -9,8 +9,13 @@ const base = driver ? '/driver' : '/passenger'
 const page = ref(1)
 const data = ref<OrderPage | null>(null)
 const { loading, error, trace, updatedAt, refresh } = usePolling(async signal => {
-  const result = await orderApi.mine(page.value, signal)
-  if (!signal.aborted) data.value = result
+  try {
+    const result = await orderApi.mine(page.value, signal)
+    if (!signal.aborted) { data.value = result; page.value = result.page }
+  } catch (failure) {
+    if (!signal.aborted) page.value = data.value?.page ?? 1
+    throw failure
+  }
 })
 function turn(delta: number) { if (!loading.value) { page.value += delta; void refresh() } }
 </script>
@@ -26,7 +31,7 @@ function turn(delta: number) { if (!loading.value) { page.value += delta; void r
       <RouterLink v-for="order in data.items" :key="order.id" class="order-panel order-card" :to="`${base}/orders/${order.id}`">
         <div class="order-card-top"><span class="muted">订单 #{{ order.id }}</span><span class="status-badge" :class="order.status">{{ statusNames[order.status] || order.status }}</span></div>
         <h2>{{ order.pickup.name }} <span aria-hidden="true">→</span> {{ order.dropoff.name }}</h2>
-        <div class="order-card-bottom"><time>{{ order.createdAt.replace('T', ' ') }}</time><strong>¥ {{ money(order.amount) }}</strong><span>查看详情 ↗</span></div>
+        <div class="order-card-bottom"><time>{{ orderTime(order.createdAt) }}</time><strong>¥ {{ money(order.amount) }}</strong><span>查看详情 ↗</span></div>
       </RouterLink>
     </div>
     <nav v-if="data && data.total > 0" class="pagination" aria-label="订单分页"><button class="secondary-button" :disabled="loading || page === 1" @click="turn(-1)">上一页</button><span>第 {{ data.page }} 页 / 共 {{ Math.max(1, Math.ceil(data.total / 10)) }} 页</span><button class="secondary-button" :disabled="loading || page * 10 >= data.total" @click="turn(1)">下一页</button></nav>

@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ApiError } from '../api'
-import { money, orderApi, statusNames, terminal, type Order } from '../orders'
+import { money, orderApi, orderTime, statusNames, terminal, type Order } from '../orders'
 import { usePolling } from '../polling'
 import { session } from '../session'
 const driver = session.account?.role === 'DRIVER'
@@ -32,7 +32,7 @@ const driverHints = { WAITING: '候选通知仅供参考，点击抢单后以服
 const hint = computed(() => {
   if (!order.value) return ''
   if (!driver) return hints[order.value.status]
-  if (['ACCEPTED', 'IN_SERVICE'].includes(order.value.status) && order.value.driverId !== session.account?.userId) return '订单已被其他司机接走，请返回工作台查看其他订单。'
+  if (['ACCEPTED', 'IN_SERVICE', 'FINISHED', 'PAID'].includes(order.value.status) && order.value.driverId !== session.account?.userId) return '订单已被其他司机接走，请返回工作台查看其他订单。'
   return driverHints[order.value.status]
 })
 watch(action, () => { confirm.value = null })
@@ -74,7 +74,7 @@ async function perform() {
     <div v-if="order" class="order-layout">
       <section class="order-panel"><span class="status-badge" :class="order.status">{{ statusNames[order.status] || order.status }}</span><h2 class="detail-hint">{{ hint }}</h2>
         <div class="place-summary" v-for="(place, index) in [order.pickup, order.dropoff]" :key="index"><span class="place-dot" :class="{ destination: index === 1 }"></span><div><span class="muted">{{ index === 0 ? '上车地点' : '目的地点' }}</span><h2>{{ place.name }}</h2><p class="muted">经度 {{ place.lng }} · 纬度 {{ place.lat }}</p></div></div>
-        <dl class="order-metadata"><div><dt>创建时间</dt><dd>{{ order.createdAt.replace('T', ' ') }}</dd></div><div><dt>更新时间</dt><dd>{{ order.updatedAt.replace('T', ' ') }}</dd></div><div><dt>司机编号</dt><dd>{{ order.driverId ?? (order.status === 'WAITING' ? '等待接单' : '候选视图不展示') }}</dd></div></dl>
+        <dl class="order-metadata"><div><dt>创建时间</dt><dd>{{ orderTime(order.createdAt) }}</dd></div><div><dt>更新时间</dt><dd>{{ orderTime(order.updatedAt) }}</dd></div><div><dt>司机编号</dt><dd>{{ order.driverId ?? (order.status === 'WAITING' ? '等待接单' : '候选视图不展示') }}</dd></div></dl>
       </section>
       <aside class="order-panel fare-panel"><span class="section-kicker">演示费用</span><div class="fare">¥ {{ money(order.amount) }}</div><p class="muted">固定演示金额，无真实资金流转。</p>
         <template v-if="action"><button v-if="!confirm" class="primary-button" :disabled="busy || reconciling || Boolean(error)" @click="confirm = action">{{ actionNames[action] }}<span aria-hidden="true">↗</span></button><div v-else class="notice" role="status"><p>{{ confirmations[confirm] }}</p><div class="confirmation-actions"><button class="secondary-button" :disabled="busy" @click="confirm = null">暂不操作</button><button class="secondary-button" :disabled="busy || reconciling || Boolean(error)" @click="perform">{{ busy ? '正在处理…' : `确认${confirmNames[confirm]}` }}</button></div></div></template>

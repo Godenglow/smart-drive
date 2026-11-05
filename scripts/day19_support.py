@@ -92,8 +92,8 @@ def number(statement):
 
 def http(method, url, body=None, headers=None, timeout=None):
     request = urllib.request.Request(url, method=method, headers=headers or {},
-                                     data=None if body is None else json.dumps(body).encode())
-    if body is not None:
+                                     data=body if isinstance(body, bytes) else None if body is None else json.dumps(body).encode())
+    if body is not None and not isinstance(body, bytes):
         request.add_header("Content-Type", "application/json")
     # Local requests must not be routed through workstation proxy settings.
     opener = getattr(HTTP_CLIENT, "opener", None)
@@ -180,7 +180,7 @@ def snapshot(health_ports=None):
             "rabbitmqVersion": overview["rabbitmq_version"], "erlangVersion": overview["erlang_version"],
             "queue": {k: q.get(k) for k in ("messages_ready", "messages_unacknowledged", "consumers")},
             "endpoints": {"gateway": gateway(), "mysql": "127.0.0.1:3306",
-                          "redisHost": os.environ.get("REDIS_HOST", "192.168.220.128"),
+                          "redisHost": os.environ.get("REDIS_HOST", "127.0.0.1"),
                           "redisPort": os.environ.get("REDIS_PORT", "6379"),
                           "nacos": os.environ.get("NACOS_ADDR", "localhost:8848")},
             "fixture": CONFIG, "timing": "perf_counter; nearest-rank percentiles; setup excluded"}
