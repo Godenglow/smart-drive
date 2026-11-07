@@ -8,7 +8,7 @@ import subprocess
 import sys
 import uuid
 
-import day19_support as s
+import step19_support as s
 
 
 def read(path):
@@ -26,7 +26,7 @@ def demo_scope():
     users, orders = set(), set()
     for path in s.RUNS.glob('*/manifest.json'):
         data = read(path)
-        if data.get('purpose') == 'day22-demo':
+        if data.get('purpose') == 'step22-demo':
             users.update(int(a['id']) for a in data['accounts'] if a.get('id'))
             orders.update(data.get('cleanedOrderIds', []))
             orders.update(data.get('demoCleanedOrderIds', []))
@@ -60,13 +60,13 @@ def exercise_demo(directory):
     with fixture.locked():
         passenger = fixture.token(fixture.passengers[0])
         s.api('PUT', '/api/drivers/me/profile', fixture.token(fixture.drivers[0]),
-              {'displayName': 'Day22 页面编辑后的司机称呼'})
+              {'displayName': 'Step22 页面编辑后的司机称呼'})
         for driver in fixture.drivers:
             s.api('PUT', '/api/drivers/me/online', fixture.token(driver), {'lng': 118.8, 'lat': 36.5})
         request_id = str(uuid.uuid4())
         order = s.api('POST', '/api/orders', passenger,
-                      {'requestId': request_id, 'pickup': {'name': 'Day22 自定义上车点', 'lng': 118.8, 'lat': 36.5},
-                       'dropoff': {'name': 'Day22 自定义终点', 'lng': 118.82, 'lat': 36.51}}, expected=201)
+                      {'requestId': request_id, 'pickup': {'name': 'Step22 自定义上车点', 'lng': 118.8, 'lat': 36.5},
+                       'dropoff': {'name': 'Step22 自定义终点', 'lng': 118.82, 'lat': 36.51}}, expected=201)
         s.api('POST', f"/api/orders/{order['id']}/cancel", passenger)
         fixture.settle([order['id']])
     # Exercise the public CLI, including pointer replacement and credential export.
@@ -97,8 +97,8 @@ def final_audit(directory):
     baseline = read(directory/'historical-baseline.json')
     current = historical_fingerprints()
     s.require(baseline['tables'] == current, 'Historical rows changed or temporary SQL data remains')
-    backend = read(directory/'day19-verification.json')
-    live = read(directory/'day19-http-result.json')
+    backend = read(directory/'step19-verification.json')
+    live = read(directory/'step19-http-result.json')
     s.require(backend['passed'] and backend['tests'] >= 99 and backend['failures'] == backend['errors'] == backend['skipped'] == 0,
               'Incomplete backend regression')
     s.require(live['passed'] and live['cleanupPassed'] and backend['liveRunId'] == live['runId'], 'Stale HTTP evidence')
@@ -109,16 +109,16 @@ def final_audit(directory):
               'Executable API example failed')
     s.require(read(s.RUNS/example['runId']/'manifest.json')['cleanupVerified'], 'API demo not cleaned')
     browsers = {}
-    for day in (15, 16, 17, 18):
-        verification = read(directory/f'day{day}-verification.json')
-        stats = read(directory/f'day{day}-browser-results.json')['stats']
+    for step in (15, 16, 17, 18):
+        verification = read(directory/f'step{step}-verification.json')
+        stats = read(directory/f'step{step}-browser-results.json')['stats']
         s.require(verification['live'] and verification['testPassed'] and verification['cleanupPassed']
                   and stats['unexpected'] == stats['flaky'] == stats['skipped'] == 0 and stats['expected'] > 0,
-                  f'Day{day} browser/cleanup failed')
-        for path in s.ROOT.glob(f'logs/day{day}-created-accounts.jsonl'):
+                  f'Step{step} browser/cleanup failed')
+        for path in s.ROOT.glob(f'logs/step{step}-created-accounts.jsonl'):
             s.require(not path.exists(), 'Pending browser cleanup journal')
-        browsers[str(day)] = stats
-    timeline = read(directory/'day18-timeline.json')
+        browsers[str(step)] = stats
+    timeline = read(directory/'step18-timeline.json')
     s.require(not timeline['videoErrors'] and timeline['timeline'][-1]['finalStatus'] == 'PAID', 'Journey incomplete')
     for name in ('passenger', 'driver-a', 'driver-b'):
         s.require((directory/f'{name}.webm').stat().st_size > 10000, 'Recording missing')
@@ -127,18 +127,18 @@ def final_audit(directory):
     videos = read(directory/'video-qa.json')
     s.require(videos['passed'] and {v['name'] for v in videos['videos']} == {'passenger','driver-a','driver-b'},
               'Recording decode/preview incomplete')
-    matrix = read(s.ROOT/'logs/day20-result.json')
-    day20 = module('day20_delivery', 'verify-day20.py')
+    matrix = read(s.ROOT/'logs/step20-result.json')
+    step20 = module('step20_delivery', 'verify-step20.py')
     cells = []
     for cell in matrix['cells']:
         folder = (s.ROOT/cell['rounds'][0]['report']).parent
-        audited = day20.audit_cell(folder, cell['scenario'], cell['concurrency'], matrix['runId'])
-        s.require(audited == cell, 'Day20 raw evidence or hashes changed')
+        audited = step20.audit_cell(folder, cell['scenario'], cell['concurrency'], matrix['runId'])
+        s.require(audited == cell, 'Step20 raw evidence or hashes changed')
         cells.append(audited)
-    s.require(matrix['passed'] and matrix['cleanupPassed'] and day20.matrix_complete(cells), 'Day20 incomplete')
-    s.require(read(s.RUNS/matrix['runId']/'manifest.json')['cleanupVerified'], 'Day20 fixture not cleaned')
-    performance = read(directory/'day21-comparison.json')
-    s.require(performance['passed'], 'Day21 audit incomplete')
+    s.require(matrix['passed'] and matrix['cleanupPassed'] and step20.matrix_complete(cells), 'Step20 incomplete')
+    s.require(read(s.RUNS/matrix['runId']/'manifest.json')['cleanupVerified'], 'Step20 fixture not cleaned')
+    performance = read(directory/'step21-comparison.json')
+    s.require(performance['passed'], 'Step21 audit incomplete')
     health = s.snapshot()
     routes = {}
     for name in ('account', 'driver', 'order'):
@@ -152,11 +152,11 @@ def final_audit(directory):
         status, body, _ = s.http('GET', f'http://127.0.0.1:{port}/v3/api-docs')
         s.require(status == 200 and body.get('paths'), 'OpenAPI export failed')
         s.save(directory/f'openapi-{name}.json', body)
-    result = {'day': 22, 'passed': True, 'auditedAt': s.stamp(), 'historicalTablesUnchanged': current,
+    result = {'step': 22, 'passed': True, 'auditedAt': s.stamp(), 'historicalTablesUnchanged': current,
               'backendTests': backend['tests'], 'httpRunId': live['runId'], 'browsers': browsers,
               'apiExample': {'passed': True, 'orderId': example['orderId'], 'states': example['states']},
-              'day20': {'runId': matrix['runId'], 'rounds': sum(len(c['rounds']) for c in cells), 'rawEvidencePassed': True},
-              'day21': {'baselineRunId': performance['baseline']['runId'], 'tunedRunId': performance['tuned']['runId'],
+              'step20': {'runId': matrix['runId'], 'rounds': sum(len(c['rounds']) for c in cells), 'rawEvidencePassed': True},
+              'step21': {'baselineRunId': performance['baseline']['runId'], 'tunedRunId': performance['tuned']['runId'],
                         'rawEvidencePassed': True}, 'demo': read(directory/'demo-reset-audit.json'),
               'environment': health, 'gatewayHealthRoutes': routes}
     result['evidenceSha256'] = {str(p.relative_to(s.ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -176,7 +176,7 @@ def main():
     args = parser.parse_args()
     s.load_env()
     directory = (s.ROOT/args.directory).resolve()
-    s.require(directory.is_relative_to((s.ROOT/'logs/day22').resolve()), 'Audit directory outside Day22 logs')
+    s.require(directory.is_relative_to((s.ROOT/'logs/step22').resolve()), 'Audit directory outside Step22 logs')
     directory.mkdir(parents=True, exist_ok=True)
     if args.baseline:
         s.require(not (directory/'historical-baseline.json').exists(), 'Do not overwrite historical baseline')

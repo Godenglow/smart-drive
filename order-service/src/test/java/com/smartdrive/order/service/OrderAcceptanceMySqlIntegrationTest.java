@@ -77,7 +77,7 @@ class OrderAcceptanceMySqlIntegrationTest {
                 assertEquals(1L, f.jdbc.queryForObject("SELECT COUNT(*) FROM driver_active_order WHERE order_id = ?", Long.class, id));
                 assertEquals(id, f.orders.findActiveOrder(winner.driverId()));
                 for (long driver : drivers) if (driver != winner.driverId()) assertNull(f.orders.findActiveOrder(driver));
-                System.out.printf("Day10 same-order round=%d attempts=10 success=1 conflicts=9 active=1%n", round + 1);
+                System.out.printf("Step10 same-order round=%d attempts=10 success=1 conflicts=9 active=1%n", round + 1);
             }
         }
     }
@@ -103,7 +103,7 @@ class OrderAcceptanceMySqlIntegrationTest {
                     assertEquals(attempt.order == winner ? Long.valueOf(driver) : null, order.driverId);
                 }
                 assertEquals(1L, f.jdbc.queryForObject("SELECT COUNT(*) FROM driver_active_order WHERE driver_id = ?", Long.class, driver));
-                System.out.printf("Day10 same-driver round=%d attempts=10 success=1 busy=9 active=1%n", round + 1);
+                System.out.printf("Step10 same-driver round=%d attempts=10 success=1 busy=9 active=1%n", round + 1);
             }
         }
     }
@@ -160,7 +160,7 @@ class OrderAcceptanceMySqlIntegrationTest {
                     assertEquals(id, f.orders.findActiveOrder(driver));
                 }
             }
-            System.out.println("Day10 cancel-vs-accept rounds=6 one-transition-per-round=PASS");
+            System.out.println("Step10 cancel-vs-accept rounds=6 one-transition-per-round=PASS");
         }
     }
 
@@ -186,7 +186,7 @@ class OrderAcceptanceMySqlIntegrationTest {
             jdbc.update("""
                     INSERT INTO ride_order(request_id, passenger_id, pickup_name, pickup_lng, pickup_lat,
                         dropoff_name, dropoff_lng, dropoff_lat, amount, status)
-                    VALUES (?, ?, 'Day10 integration', 117.215, 39.136, 'Day10 end', 117.174, 39.104, 50.00, 'WAITING')
+                    VALUES (?, ?, 'Step10 integration', 117.215, 39.136, 'Step10 end', 117.174, 39.104, 50.00, 'WAITING')
                     """, request, passenger);
             long id = orders.findByRequest(passenger, request).id;
             ids.add(id);

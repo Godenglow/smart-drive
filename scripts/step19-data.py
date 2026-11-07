@@ -1,9 +1,9 @@
-"""Create/reset/clean journaled local fixtures. Usage: python scripts/day19-data.py --help"""
+"""Create/reset/clean journaled local fixtures. Usage: python scripts/step19-data.py --help"""
 import argparse
 import json
 import uuid
 
-from day19_support import CONFIG, Fixture, load_env, save, snapshot
+from step19_support import CONFIG, Fixture, load_env, save, snapshot
 
 
 def main():

@@ -1,4 +1,4 @@
--- Day 8-12 订单库；outbox_event 在 Day 12 启用，结构兼容已有数据库，无需破坏性迁移。
+-- Step 8-12 订单库；outbox_event 在 Step 12 启用，结构兼容已有数据库，无需破坏性迁移。
 -- 使用已有项目数据库账号执行；不包含凭据或演示数据。
 CREATE DATABASE IF NOT EXISTS order_db CHARACTER SET utf8mb4;
 

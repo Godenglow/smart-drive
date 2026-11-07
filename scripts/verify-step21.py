@@ -12,7 +12,7 @@ import time
 import uuid
 from urllib.parse import quote
 
-from day19_support import (CONFIG, ROOT, Fixture, api, gateway, http, load_env, mq,
+from step19_support import (CONFIG, ROOT, Fixture, api, gateway, http, load_env, mq,
                            queue, require, save, snapshot, sql, stamp, wait_until)
 
 METRICS = ('jvm.memory.used', 'jvm.memory.max', 'jvm.gc.pause', 'jvm.threads.live',
@@ -124,8 +124,8 @@ def run_load(fixture, phase, token, driver_tokens, duration, rps, workers):
     # Persist ALL intended IDs before the first send, including responses lost after commit.
     fixture.data['apiRequests'].extend(requests)
     fixture.save()
-    raw_path = fixture.directory / f'day21-{phase}-requests.jsonl'
-    metric_path = fixture.directory / f'day21-{phase}-metrics.jsonl'
+    raw_path = fixture.directory / f'step21-{phase}-requests.jsonl'
+    metric_path = fixture.directory / f'step21-{phase}-metrics.jsonl'
     rows, samples, sample_errors = [], [], []
     stop = threading.Event()
     epoch = time.perf_counter() + 1
@@ -219,7 +219,7 @@ def run_load(fixture, phase, token, driver_tokens, duration, rps, workers):
         monitor_thread.join()
         heartbeat_thread.join()
     final = database_rows(fixture, phase)
-    save(fixture.directory / f'day21-{phase}-database.json', final)
+    save(fixture.directory / f'step21-{phase}-database.json', final)
     # Re-read requests from disk so truncation cannot become a passing in-memory result.
     rows = [json.loads(line) for line in raw_path.read_text(encoding='utf-8').splitlines()]
     verdict = judge(rows, final, expected, [a['id'] for a in fixture.drivers])
@@ -259,14 +259,14 @@ def main():
     load_env()
     os.environ.setdefault('RABBITMQ_MANAGEMENT_URL', 'http://127.0.0.1:15672')
     fixture = Fixture(str(uuid.uuid4()))
-    result = {'day':21, 'runId':fixture.run_id, 'phase':args.phase, 'startedAt':stamp(),
+    result = {'step':21, 'runId':fixture.run_id, 'phase':args.phase, 'startedAt':stamp(),
               'passed':False, 'cleanupPassed':False}
-    output = fixture.directory / 'day21-result.json'
+    output = fixture.directory / 'step21-result.json'
     print(f'runId={fixture.run_id} evidence={fixture.directory}', flush=True)
     with fixture.locked():
         try:
             environment = snapshot(health_ports={p:p+10000 for p in (8080,8081,8082,8083)})
-            environment['runtime'] = {name: json.loads((ROOT / f'logs/day21-runtime/{name}.json').read_text(encoding='utf-8-sig'))
+            environment['runtime'] = {name: json.loads((ROOT / f'logs/step21-runtime/{name}.json').read_text(encoding='utf-8-sig'))
                 for name in ('gateway','account-service','driver-service','order-service')}
             environment['load'] = vars(args)
             save(fixture.directory / 'environment.json', environment)
@@ -307,7 +307,7 @@ def main():
             result['evidenceSha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in fixture.directory.glob('*') if p.suffix in ('.json','.jsonl') and p != output and p.name != 'manifest.json'}
             save(output, result)
-            save(ROOT / f'logs/day21-{args.phase}-result.json', result)
+            save(ROOT / f'logs/step21-{args.phase}-result.json', result)
     print(json.dumps({'runId':fixture.run_id, 'passed':result['passed'], 'cleanupPassed':result['cleanupPassed'],
                       'result':str(output)}, indent=2), flush=True)
     return 0 if result['passed'] else 1

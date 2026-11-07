@@ -2,12 +2,12 @@ import { test, expect } from '@playwright/test'
 import { appendFileSync, mkdirSync } from 'node:fs'
 import { randomInt } from 'node:crypto'
 
-test.skip(process.env.SMARTDRIVE_LIVE_TEST !== 'true', '通过 scripts/verify-day15.ps1 显式启用真实 Gateway/MySQL 验收')
+test.skip(process.env.SMARTDRIVE_LIVE_TEST !== 'true', '通过 scripts/verify-step15.ps1 显式启用真实 Gateway/MySQL 验收')
 
 for (const role of ['PASSENGER', 'DRIVER']) {
   test(`真实网关：${role} 浏览器注册、登录、刷新、越权、退出`, async ({ page }) => {
     const phone = '199' + String(randomInt(0, 100_000_000)).padStart(8, '0')
-    const password = 'Day15!Browser-' + randomInt(10000, 99999)
+    const password = 'Step15!Browser-' + randomInt(10000, 99999)
     await page.goto('/register')
     await page.getByRole('radio', { name: role === 'DRIVER' ? /司机/ : /乘客/ }).check()
     await page.getByLabel('手机号', { exact: true }).fill(phone)
@@ -20,7 +20,7 @@ for (const role of ['PASSENGER', 'DRIVER']) {
     const body = await response.json()
     if (body.data?.userId) {
       mkdirSync('../logs', { recursive: true })
-      appendFileSync('../logs/day15-created-accounts.jsonl', JSON.stringify({ userId: body.data.userId, phone }) + '\n')
+      appendFileSync('../logs/step15-created-accounts.jsonl', JSON.stringify({ userId: body.data.userId, phone }) + '\n')
     }
     expect(response.status()).toBe(200)
     await expect(page.getByRole('status')).toContainText('注册成功')
@@ -34,7 +34,7 @@ for (const role of ['PASSENGER', 'DRIVER']) {
     await expect(page.getByRole('heading', { name: role === 'DRIVER' ? '司机身份已就绪' : '乘客身份已就绪' })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('heading', { name: role === 'DRIVER' ? '司机身份已就绪' : '乘客身份已就绪' })).toBeVisible()
-    await page.screenshot({ path: `../logs/day15-live-${role.toLowerCase()}.png`, fullPage: true })
+    await page.screenshot({ path: `../logs/step15-live-${role.toLowerCase()}.png`, fullPage: true })
     // 后端仍须独立拦截角色权限，不依赖前端守卫。
     const denied = await page.evaluate(async currentRole => {
       const token = JSON.parse(sessionStorage.getItem('smartdrive.session')!).token

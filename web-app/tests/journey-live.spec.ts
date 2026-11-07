@@ -2,12 +2,12 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 import { appendFileSync, mkdirSync, writeFileSync, statSync } from 'node:fs'
 import { randomInt, randomUUID } from 'node:crypto'
 
-test.skip(process.env.SMARTDRIVE_DAY18_LIVE !== 'true', '通过 scripts/verify-day18.ps1 -Live 启用真实联调、录制及临时数据清理')
+test.skip(process.env.SMARTDRIVE_STEP18_LIVE !== 'true', '通过 scripts/verify-step18.ps1 -Live 启用真实联调、录制及临时数据清理')
 
 test('独立乘客与司机会话：取消、MQ 待抢、双司机竞争、刷新履约及模拟支付录制', async ({ browser, request }, testInfo) => {
   test.setTimeout(180000)
-  mkdirSync('../logs/day18-video', { recursive: true })
-  const password = 'Day18!' + randomUUID()
+  mkdirSync('../logs/step18-video', { recursive: true })
+  const password = 'Step18!' + randomUUID()
   const accounts: { userId: number; phone: string; role: string; token: string }[] = []
   const sessions: { name: string; context: BrowserContext; page: Page }[] = []
   const timeline: { step: string; at: string; [key: string]: unknown }[] = []
@@ -21,14 +21,14 @@ test('独立乘客与司机会话：取消、MQ 待抢、双司机竞争、刷�
   async function account(role: string) {
     const phone = '199' + randomInt(10000000, 99999999)
     const registered = await api('POST', '/api/auth/register', { phone, password, role })
-    appendFileSync('../logs/day18-created-accounts.jsonl', JSON.stringify({ userId: registered.userId, phone, role }) + '\n')
+    appendFileSync('../logs/step18-created-accounts.jsonl', JSON.stringify({ userId: registered.userId, phone, role }) + '\n')
     const login = await api('POST', '/api/auth/login', { phone, password })
     const result = { userId: registered.userId as number, phone, role, token: login.accessToken as string }
     accounts.push(result)
     return result
   }
   async function session(name: string, actor: Awaited<ReturnType<typeof account>>) {
-    const context = await browser.newContext({ baseURL: 'http://127.0.0.1:5173', viewport: { width: 1440, height: 1000 }, recordVideo: { dir: '../logs/day18-video', size: { width: 1440, height: 1000 } } })
+    const context = await browser.newContext({ baseURL: 'http://127.0.0.1:5173', viewport: { width: 1440, height: 1000 }, recordVideo: { dir: '../logs/step18-video', size: { width: 1440, height: 1000 } } })
     const page = await context.newPage()
     sessions.push({ name, context, page })
     page.on('request', req => {
@@ -68,7 +68,7 @@ test('独立乘客与司机会话：取消、MQ 待抢、双司机竞争、刷�
     expect(new Set(sessions.map(item => item.context)).size).toBe(3)
     for (const d of [da, db]) {
       await d.getByRole('link', { name: '先完善司机资料' }).click()
-      await d.getByLabel('司机称呼').fill('Day18-browser-fixture')
+      await d.getByLabel('司机称呼').fill('Step18-browser-fixture')
       await d.getByRole('button', { name: '保存司机资料' }).click()
       await expect(d.getByRole('status')).toContainText('已保存')
       await d.getByRole('link', { name: '司机工作台' }).click()
@@ -106,7 +106,7 @@ test('独立乘客与司机会话：取消、MQ 待抢、双司机竞争、刷�
     await expect(loser.getByRole('alert')).toContainText('请求编号')
     await expect(loser.getByRole('heading', { name: /已被其他司机接走/ })).toBeVisible()
     await expect(loser.getByRole('button', { name: /抢单|开始服务|完成服务/ })).toHaveCount(0)
-    await loser.screenshot({ path: '../logs/day18-live-conflict.png', fullPage: true })
+    await loser.screenshot({ path: '../logs/step18-live-conflict.png', fullPage: true })
     await loser.reload()
     await expect(loser.getByRole('heading', { name: /已被其他司机接走/ })).toBeVisible()
     const candidate = await api('GET', `/api/orders/${orderId}`, undefined, loserAccount.token)
@@ -123,7 +123,7 @@ test('独立乘客与司机会话：取消、MQ 待抢、双司机竞争、刷�
     await expect(winner.locator('.status-badge')).toHaveText('已支付', { timeout: 12000 })
     for (const [name, page] of [['passenger', p], ['driver', winner]] as const) {
       await page.reload(); await expect(page.locator('.status-badge')).toHaveText('已支付')
-      await page.screenshot({ path: `../logs/day18-live-${name}-paid.png`, fullPage: true })
+      await page.screenshot({ path: `../logs/step18-live-${name}-paid.png`, fullPage: true })
       await page.getByRole('link', { name: '返回我的订单' }).click()
       await expect(page.getByRole('link', { name: new RegExp(`订单 #${orderId} `) })).toBeVisible()
       await expect(page.locator('.status-badge.PAID')).toHaveCount(1)
@@ -154,13 +154,13 @@ test('独立乘客与司机会话：取消、MQ 待抢、双司机竞争、刷�
           const video = page.video()
           await context.close()
           expect(video).not.toBeNull()
-          const path = `../logs/day18-${name}.webm`
+          const path = `../logs/step18-${name}.webm`
           await video!.saveAs(path)
           expect(statSync(path).size).toBeGreaterThan(10000)
           await testInfo.attach(name, { path, contentType: 'video/webm' })
         } catch (error) { videoErrors.push(error) }
       }
-      writeFileSync('../logs/day18-timeline.json', JSON.stringify({ timeline, writes, videoErrors: videoErrors.map(String) }, null, 2))
+      writeFileSync('../logs/step18-timeline.json', JSON.stringify({ timeline, writes, videoErrors: videoErrors.map(String) }, null, 2))
       expect(videoErrors).toHaveLength(0)
     }
   }

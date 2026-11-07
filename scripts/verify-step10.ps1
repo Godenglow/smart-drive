@@ -22,7 +22,7 @@ $runId = [Guid]::NewGuid().ToString()
 
 function Sql([string]$statement) {
     $result = & mysql.exe --host=127.0.0.1 "--user=$dbUser" --default-character-set=utf8mb4 --batch --skip-column-names "--execute=$statement"
-    if ($LASTEXITCODE -ne 0) { throw 'Day10 test SQL failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Step10 test SQL failed' }
     return $result
 }
 function Api($method, $path, $headers, $body, $expected, $code = $null) {
@@ -48,7 +48,7 @@ function Account([string]$role) {
     return $account
 }
 function New-Order($passenger) {
-    $place = @{name="Day10-$runId";lng=117.215;lat=39.136}
+    $place = @{name="Step10-$runId";lng=117.215;lat=39.136}
     $created = Api Post '/api/orders' $passenger.headers @{requestId=[Guid]::NewGuid().ToString();pickup=$place;dropoff=$place} 201
     $orders.Add([long]$created.id)
     Wait-OrderMatching @([long]$created.id)
@@ -72,7 +72,7 @@ try {
     $d2 = Account DRIVER
     $unnotified = Account DRIVER
     foreach ($driver in @($d1,$d2)) {
-        $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Day10-$runId"} 200
+        $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Step10-$runId"} 200
         $null = Api Put '/api/drivers/me/online' $driver.headers @{lng=117.215;lat=39.136} 200
     }
     $id = New-Order $passenger
@@ -146,12 +146,12 @@ try {
         if ($passenger) { $null = Sql "DELETE FROM order_db.ride_order WHERE id=$id AND passenger_id=$($passenger.id)" }
     }
     foreach ($account in $accounts) {
-        $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($account.id) AND display_name='Day10-$runId'; DELETE FROM account_db.account WHERE id=$($account.id) AND phone='$($account.phone)';"
+        $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($account.id) AND display_name='Step10-$runId'; DELETE FROM account_db.account WHERE id=$($account.id) AND phone='$($account.phone)';"
     }
     } finally { $env:MYSQL_PWD = $previousMysqlPassword }
 }
 $logDir = Join-Path $projectRoot 'logs'
 $null = New-Item -ItemType Directory -Force -Path $logDir
 $report | Add-Member -NotePropertyName cleanup -NotePropertyValue 'Completed: only this run test rows removed'
-$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $logDir 'day10-http-result.json') -Encoding utf8
+$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $logDir 'step10-http-result.json') -Encoding utf8
 $report | ConvertTo-Json -Depth 8

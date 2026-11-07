@@ -36,7 +36,7 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- 先只引 BCrypt 密码编码器，不引入完整 Spring Security Web；V1 鉴权 Day 5 用 JWT 过滤器实现 -->
+        <!-- 先只引 BCrypt 密码编码器，不引入完整 Spring Security Web；V1 鉴权 Step 5 用 JWT 过滤器实现 -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>

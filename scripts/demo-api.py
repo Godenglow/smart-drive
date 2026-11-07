@@ -1,10 +1,10 @@
-"""Runnable API example using the locally journaled Day22 demo credentials."""
+"""Runnable API example using the locally journaled Step22 demo credentials."""
 import importlib.util
 import json
 from pathlib import Path
 import uuid
 
-import day19_support as s
+import step19_support as s
 
 spec = importlib.util.spec_from_file_location('demo_data_api', Path(__file__).with_name('demo-data.py'))
 demo = importlib.util.module_from_spec(spec)
@@ -48,7 +48,7 @@ def main():
             result = {'passed': True, 'at': s.stamp(), 'runId': fixture.run_id, 'orderId': order_id,
                       'states': states, 'idempotentOrderId': same['id'], 'realMqCandidates': len(drivers),
                       'finalOrder': s.api('GET', path, p)}
-            s.save(s.ROOT/'logs/day22/demo-api-result.json', result)
+            s.save(s.ROOT/'logs/step22/demo-api-result.json', result)
             print(json.dumps(result, ensure_ascii=False))
         finally:
             for token in drivers:

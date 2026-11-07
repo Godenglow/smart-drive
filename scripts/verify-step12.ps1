@@ -24,7 +24,7 @@ $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smart
 $previousMysqlPassword = $env:MYSQL_PWD
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
 $runId = [Guid]::NewGuid().ToString()
-$capture = "smartdrive.day12.capture.$runId"
+$capture = "smartdrive.step12.capture.$runId"
 $captureCreated = $false
 $driver = $null
 $orderId = 0L
@@ -35,7 +35,7 @@ $report = $null
 function Assert-True($condition, [string]$message) { if (-not $condition) { throw $message } }
 function Sql([string]$statement) {
     $result = & mysql.exe --host=127.0.0.1 "--user=$dbUser" --default-character-set=utf8mb4 --batch --skip-column-names "--execute=$statement"
-    if ($LASTEXITCODE -ne 0) { throw 'Day12 SQL check failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Step12 SQL check failed' }
     return $result
 }
 function Api($method, $path, $headers, $body, $expected = 200) {
@@ -74,10 +74,10 @@ try {
     $driver = @{id=[long]$account.userId;phone=$phone;headers=@{}}
     $driverLogin = Api Post '/api/auth/login' @{} @{phone=$phone;password=$password}
     $driver.headers = @{Authorization="Bearer $($driverLogin.accessToken)"}
-    $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Day12-$runId"}
+    $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Step12-$runId"}
     $null = Api Put '/api/drivers/me/online' $driver.headers @{lng=117.215;lat=39.136}
 
-    $place = @{name="Day12-$runId";lng=117.215;lat=39.136}
+    $place = @{name="Step12-$runId";lng=117.215;lat=39.136}
     $request = @{requestId=[Guid]::NewGuid().ToString();pickup=$place;dropoff=$place}
     $created = Api Post '/api/orders' $passengerHeaders $request 201
     $orderId = [long]$created.id
@@ -122,7 +122,7 @@ try {
         try { if ($driver.headers.Authorization) { $null = Api Put '/api/drivers/me/offline' $driver.headers $null } }
         catch { $cleanupErrors.Add('Temporary driver offline failed') }
         try {
-            $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($driver.id) AND display_name='Day12-$runId'; DELETE FROM account_db.account WHERE id=$($driver.id) AND phone='$($driver.phone)';"
+            $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($driver.id) AND display_name='Step12-$runId'; DELETE FROM account_db.account WHERE id=$($driver.id) AND phone='$($driver.phone)';"
             Assert-True ((Sql "SELECT (SELECT COUNT(*) FROM driver_db.driver_profile WHERE user_id=$($driver.id)) + (SELECT COUNT(*) FROM account_db.account WHERE id=$($driver.id))") -eq 0) 'Temporary driver rows remain'
         } catch { $cleanupErrors.Add('Temporary driver cleanup failed') }
     }
@@ -133,8 +133,8 @@ try {
     $env:MYSQL_PWD = $previousMysqlPassword
     if ($cleanupErrors.Count -gt 0) { Write-Warning ($cleanupErrors -join '; ') }
 }
-Assert-True ($cleanupErrors.Count -eq 0) 'Day12 cleanup incomplete'
+Assert-True ($cleanupErrors.Count -eq 0) 'Step12 cleanup incomplete'
 $report | Add-Member -NotePropertyName cleanup -NotePropertyValue 'Temporary driver/capture queue removed; demonstration order retained as CANCELLED with its SENT event'
 $null = New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'logs')
-$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $projectRoot 'logs/day12-http-result.json') -Encoding utf8
+$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $projectRoot 'logs/step12-http-result.json') -Encoding utf8
 $report | ConvertTo-Json -Depth 8

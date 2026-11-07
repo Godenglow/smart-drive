@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class DriverNoticeControllerTest {
     @Test void scopesNoticesToJwtAndValidatesQuery() throws Exception {
         var mapper = mock(OrderNoticeMapper.class);
-        var jwt = new JwtCodec("day13-test-secret-at-least-thirty-two-bytes", new ObjectMapper(), java.time.Clock.systemUTC());
+        var jwt = new JwtCodec("step13-test-secret-at-least-thirty-two-bytes", new ObjectMapper(), java.time.Clock.systemUTC());
         var mvc = MockMvcBuilders.standaloneSetup(new DriverController(mock(DriverService.class), new OrderNoticeService(mapper)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .addFilters(new ServletAuthFilter(jwt, new ObjectMapper())).build();

@@ -35,7 +35,7 @@ class RuntimeScriptTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         return json.loads(result.stdout.strip().splitlines()[-1])
 
-    def day21(self, existing=False, no_env_file=False, missing_source=False, foreign=False):
+    def step21(self, existing=False, no_env_file=False, missing_source=False, foreign=False):
         for name in ('account-service', 'driver-service', 'order-service', 'gateway'):
             target = self.root / name / 'target'
             target.mkdir(parents=True)
@@ -45,7 +45,7 @@ class RuntimeScriptTest(unittest.TestCase):
             (self.root / '.env.local').unlink()
         self.env['TEST_EXISTING'] = str(int(existing))
         self.env['TEST_FOREIGN'] = str(int(foreign))
-        return self.run_script('day21-runtime.ps1', r'''
+        return self.run_script('step21-runtime.ps1', r'''
 $global:testStarted = @(); $global:testStopped = @(); $failure = $null
 function Get-Command { param($Name) [pscustomobject]@{Source='X:\portable-jdk\bin\java.exe'} }
 function Get-NetTCPConnection {
@@ -66,14 +66,14 @@ function Start-Process {
     $global:testStarted += @{java=$FilePath;arguments=$ArgumentList;windowStyle=$WindowStyle}
     [pscustomobject]@{Id=123}
 }
-try { & "$env:TEST_WORKSPACE/scripts/day21-runtime.ps1" | Out-Null }
+try { & "$env:TEST_WORKSPACE/scripts/step21-runtime.ps1" | Out-Null }
 catch { $failure = $_.Exception.Message }
 @{started=$global:testStarted;stopped=$global:testStopped;failure=$failure;redis=$env:REDIS_HOST;
   fallback=$env:SMARTDRIVE_RUNTIME_TEST_FALLBACK} | ConvertTo-Json -Depth 6 -Compress
 ''')
 
-    def test_day21_bootstraps_all_jars_without_historical_logs_or_running_services(self):
-        result = self.day21()
+    def test_step21_bootstraps_all_jars_without_historical_logs_or_running_services(self):
+        result = self.step21()
         self.assertIsNone(result['failure'])
         self.assertEqual(4, len(result['started']))
         self.assertEqual([], result['stopped'])
@@ -83,40 +83,40 @@ catch { $failure = $_.Exception.Message }
             self.assertEqual(r'X:\portable-jdk\bin\java.exe', process['java'])
             self.assertEqual('Hidden', process['windowStyle'])
             self.assertTrue(process['arguments'][1].startswith('"'))
-        self.assertEqual('gateway', (self.root / 'logs/day21-runtime/gateway.jar').read_text())
+        self.assertEqual('gateway', (self.root / 'logs/step21-runtime/gateway.jar').read_text())
 
-    def test_day21_stops_verified_services_and_restarts_from_build_outputs(self):
-        result = self.day21(existing=True)
+    def test_step21_stops_verified_services_and_restarts_from_build_outputs(self):
+        result = self.step21(existing=True)
         self.assertIsNone(result['failure'])
         self.assertEqual(4, len(result['started']))
         self.assertEqual([42] * 4, result['stopped'])
 
-    def test_day21_can_use_process_environment_without_local_env_file(self):
-        result = self.day21(no_env_file=True)
+    def test_step21_can_use_process_environment_without_local_env_file(self):
+        result = self.step21(no_env_file=True)
         self.assertIsNone(result['failure'])
         self.assertEqual('explicit-host', result['redis'])
         self.assertEqual(4, len(result['started']))
 
-    def test_day21_missing_build_does_not_stop_a_healthy_service(self):
-        result = self.day21(existing=True, missing_source=True)
+    def test_step21_missing_build_does_not_stop_a_healthy_service(self):
+        result = self.step21(existing=True, missing_source=True)
         self.assertIn('Missing build JAR', result['failure'])
         self.assertEqual([], result['started'])
         self.assertEqual([], result['stopped'])
 
-    def test_day21_refuses_another_projects_java_process(self):
-        result = self.day21(existing=True, foreign=True)
+    def test_step21_refuses_another_projects_java_process(self):
+        result = self.step21(existing=True, foreign=True)
         self.assertIn('Unexpected process', result['failure'])
         self.assertEqual([], result['started'])
         self.assertEqual([], result['stopped'])
 
-    def day19(self, maven_failure=False):
+    def step19(self, maven_failure=False):
         self.env['TEST_MAVEN_FAIL'] = str(int(maven_failure))
         reports = self.root / 'order-service/target/surefire-reports'
         reports.mkdir(parents=True)
         (reports / 'TEST-stale.xml').write_text('<testsuite tests="0"/>')
         (self.root / 'scripts/start-local.ps1').write_text('$global:restored++\n')
         (self.root / 'order-service.jar').write_text('stable running order-service')
-        return self.run_script('verify-day19.ps1', r'''
+        return self.run_script('verify-step19.ps1', r'''
 $global:restored=0; $global:testStopped=@(); $global:testLive=$false; $failure=$null
 function Get-NetTCPConnection { param($LocalPort,$State) [pscustomobject]@{OwningProcess=42} }
 function Get-CimInstance {
@@ -126,11 +126,11 @@ function Get-CimInstance {
 function Stop-Process { param($Id) $global:testStopped += $Id }
 function python {
     $global:LASTEXITCODE=0
-    if ($args -contains 'scripts/verify-day19.py') {
+    if ($args -contains 'scripts/verify-step19.py') {
         if ($global:restored -ne 1) { throw 'HTTP ran before order-service was restored' }
         $global:testLive=$true
         @{passed=$true;cleanupPassed=$true;runId='fake-test-run'} | ConvertTo-Json |
-            Set-Content "$env:TEST_WORKSPACE/logs/day19-http-result.json"
+            Set-Content "$env:TEST_WORKSPACE/logs/step19-http-result.json"
     }
 }
 function mvn.cmd {
@@ -144,21 +144,21 @@ function mvn.cmd {
     }
     $global:LASTEXITCODE=0
 }
-try { & "$env:TEST_WORKSPACE/scripts/verify-day19.ps1" | Out-Null }
+try { & "$env:TEST_WORKSPACE/scripts/verify-step19.ps1" | Out-Null }
 catch { $failure=$_.Exception.Message }
 @{stopped=$global:testStopped;restored=$global:restored;live=$global:testLive;failure=$failure} |
     ConvertTo-Json -Compress
 ''')
 
-    def test_day19_default_command_isolates_publisher_and_restores_before_http(self):
-        result = self.day19()
+    def test_step19_default_command_isolates_publisher_and_restores_before_http(self):
+        result = self.step19()
         self.assertIsNone(result['failure'])
         self.assertEqual([42], result['stopped'])
         self.assertEqual(1, result['restored'])
         self.assertTrue(result['live'])
 
-    def test_day19_restores_publisher_even_when_maven_fails(self):
-        result = self.day19(maven_failure=True)
+    def test_step19_restores_publisher_even_when_maven_fails(self):
+        result = self.step19(maven_failure=True)
         self.assertEqual('Maven regression failed', result['failure'])
         self.assertEqual([42], result['stopped'])
         self.assertEqual(1, result['restored'])

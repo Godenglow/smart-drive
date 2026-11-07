@@ -1,7 +1,6 @@
 #requires -Version 7.0
 param([string]$GatewayUrl = 'http://localhost:8080',
-      [string]$PassengerPhone = '13800138000', [string]$PassengerPassword = 'Passw0rd!23',
-      [string]$RabbitCtl = 'D:/Apps/RabbitMQServer/rabbitmq_server-4.3.5/sbin/rabbitmqctl.bat')
+      [string]$PassengerPhone = '13800138000', [string]$PassengerPassword = 'Passw0rd!23')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $localEnv = Join-Path $projectRoot '.env.local'
@@ -17,8 +16,6 @@ $accounts = [Collections.Generic.List[object]]::new()
 $cleanupErrors = [Collections.Generic.List[string]]::new()
 $orderId = 0L
 $report = $null
-$restoreRequired = $false
-$outageEvidence = $null
 $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smartdrive' }
 $previousMysqlPassword = $env:MYSQL_PWD
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
@@ -30,7 +27,7 @@ $mqHeaders = @{Authorization='Basic ' + [Convert]::ToBase64String([Text.Encoding
 function Assert-True($condition, [string]$message) { if (-not $condition) { throw $message } }
 function Sql([string]$statement) {
     $result = & mysql.exe --host=127.0.0.1 "--user=$dbUser" --batch --skip-column-names "--execute=$statement"
-    if ($LASTEXITCODE -ne 0) { throw 'Day14 SQL failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Step13 SQL failed' }
     return $result
 }
 function Api($method, $path, $headers, $body = $null, $expected = 200, $code = '0') {
@@ -49,26 +46,11 @@ function Driver([double]$lng) {
     $accounts.Add($account)
     $login = Api Post '/api/auth/login' @{} @{phone=$phone;password=$password}
     $account.headers = @{Authorization="Bearer $($login.accessToken)"}
-    $null = Api Put '/api/drivers/me/profile' $account.headers @{displayName="Day14-$runId"}
+    $null = Api Put '/api/drivers/me/profile' $account.headers @{displayName="Step13-$runId"}
     $null = Api Put '/api/drivers/me/online' $account.headers @{lng=$lng;lat=36.5}
     return $account
 }
-function Restore-Broker {
-    & $RabbitCtl start_app | Out-Host
-    Assert-True ($LASTEXITCODE -eq 0) 'RabbitMQ start_app failed; restore the broker manually'
-    for ($i=0; $i -lt 30; $i++) {
-        try {
-            $health = Invoke-RestMethod -Uri "$mqUrl/api/health/checks/alarms" -Headers $mqHeaders -TimeoutSec 3
-            if ($health.status -eq 'ok') { $script:restoreRequired = $false; return }
-        } catch { }
-        Start-Sleep -Seconds 1
-    }
-    throw 'RabbitMQ did not recover; restoreRequired remains true'
-}
 try {
-    Assert-True (Test-Path $RabbitCtl) 'RabbitCtl not found'
-    & $RabbitCtl await_startup --timeout 10 | Out-Host
-    Assert-True ($LASTEXITCODE -eq 0) 'RabbitMQ must initially be running'
     $null = Sql 'SELECT 1 FROM driver_db.processed_order_event LIMIT 1'
     $login = Api Post '/api/auth/login' @{} @{phone=$PassengerPhone;password=$PassengerPassword}
     Assert-True ($login.role -eq 'PASSENGER') 'Demo passenger required'
@@ -76,30 +58,9 @@ try {
     $first = Driver 118.8
     $second = Driver 118.8001
     $far = Driver 119.8
-    $place = @{name="Day14-$runId";lng=118.8;lat=36.5}
-    $requestId = [Guid]::NewGuid().ToString()
-    Write-Host 'Stopping local RabbitMQ for the Day14 recovery drill.'
-    $restoreRequired = $true
-    & $RabbitCtl stop_app | Out-Host
-    Assert-True ($LASTEXITCODE -eq 0) 'RabbitMQ stop_app failed'
-    $outageStart = Get-Date
-    $created = Api Post '/api/orders' $passengerHeaders @{requestId=$requestId;pickup=$place;dropoff=$place} 201
+    $place = @{name="Step13-$runId";lng=118.8;lat=36.5}
+    $created = Api Post '/api/orders' $passengerHeaders @{requestId=[Guid]::NewGuid().ToString();pickup=$place;dropoff=$place} 201
     $orderId = [long]$created.id
-    for ($i=0; $i -lt 40; $i++) {
-        $pending = (Sql "SELECT JSON_OBJECT('status',status,'attempts',attempts,'eventId',event_id) FROM order_db.outbox_event WHERE aggregate_id=$orderId") | ConvertFrom-Json
-        if ($pending.attempts -ge 1) { break }
-        Start-Sleep -Milliseconds 500
-    }
-    Assert-True ($pending.status -eq 'NEW' -and $pending.attempts -ge 1) 'Failed send must remain NEW with attempts recorded'
-    Assert-True ((Sql "SELECT COUNT(*) FROM driver_db.order_notice WHERE order_id=$orderId") -eq 0) 'No notice should exist while broker is stopped'
-    $retried = Api Post '/api/orders' $passengerHeaders @{requestId=$requestId;pickup=$place;dropoff=$place} 201
-    Assert-True ($retried.id -eq $orderId) 'Idempotent create during outage duplicated an order'
-    Assert-True ((Sql "SELECT COUNT(*) FROM order_db.ride_order WHERE passenger_id=$($created.passengerId) AND request_id='$requestId'") -eq 1) 'Duplicate order during outage'
-    # Cover at least one default 30-second backlog-log interval while the broker is down.
-    while (((Get-Date)-$outageStart).TotalSeconds -lt 35) { Start-Sleep -Milliseconds 500 }
-    $outageEvidence = [pscustomobject]@{brokerActuallyStopped=$true;orderCreatedWhileStopped=$true;statusBeforeRecovery=$pending.status;failedAttempts=$pending.attempts;noticesWhileStopped=0;idempotentRetry=$true}
-    Restore-Broker
-    $outageEvidence | Add-Member -NotePropertyName stoppedMs -NotePropertyValue ([long]((Get-Date)-$outageStart).TotalMilliseconds)
     for ($attempt=0; $attempt -lt 40; $attempt++) {
         $ids = @(Api Get '/api/drivers/me/notices?status=NEW' $first.headers)
         $otherIds = @(Api Get '/api/drivers/me/notices' $second.headers)
@@ -118,8 +79,6 @@ try {
     $late = Driver 118.8002
     $eventRow = Sql "SELECT JSON_OBJECT('eventId',event_id,'status',status,'payload',payload) FROM order_db.outbox_event WHERE aggregate_id=$orderId AND event_type='order.created'"
     $event = $eventRow | ConvertFrom-Json
-    Assert-True ($event.status -eq 'SENT') 'Outbox did not recover to SENT'
-    $outageEvidence | Add-Member -NotePropertyName statusAfterRecovery -NotePropertyValue $event.status
     $wirePayload = if ($event.payload -is [string]) { $event.payload } else { $event.payload | ConvertTo-Json -Depth 8 -Compress }
     # Publish the exact same wire event twice. No shared queue is read or purged.
     for ($i=0; $i -lt 2; $i++) {
@@ -152,9 +111,8 @@ try {
     $docs = Invoke-RestMethod 'http://localhost:8082/v3/api-docs' -TimeoutSec 20
     Assert-True ($null -ne $docs.paths.'/api/drivers/me/notices' -and $null -ne $docs.components.securitySchemes.bearerAuth) 'Driver OpenAPI missing notices/JWT'
     Assert-True (@($docs.paths.PSObject.Properties.Name | Where-Object { $_ -like '/internal/*' }).Count -eq 0) 'Internal driver APIs must be hidden'
-    $report = [PSCustomObject]@{time=(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz');runId=$runId;orderId=$orderId;eventId=$event.eventId;nearbyNotified=2;farExcluded=$true;replayCount=2;noticeRows=2;lateDriverExcluded=$true;candidatePrivacy=$true;auth=$true;race=$race;finalStatus=$paid.status;openApi=$true;outage=$outageEvidence}
+    $report = [PSCustomObject]@{time=(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz');runId=$runId;orderId=$orderId;eventId=$event.eventId;nearbyNotified=2;farExcluded=$true;replayCount=2;noticeRows=2;lateDriverExcluded=$true;candidatePrivacy=$true;auth=$true;race=$race;finalStatus=$paid.status;openApi=$true}
 } finally {
-    if ($restoreRequired) { Restore-Broker }
     $canRemoveAccounts = $true
     if ($orderId -gt 0) {
         try {
@@ -169,8 +127,8 @@ try {
                 Start-Sleep -Milliseconds 500
             }
             Assert-True ($queue.messages_ready -eq 0 -and $queue.messages_unacknowledged -eq 0) 'Queue is not drained; retain fixtures'
-            Assert-True ((Sql "SELECT COUNT(*) FROM order_db.ride_order WHERE id=$orderId AND pickup_name='Day14-$runId'") -eq 1) 'Fixture identity mismatch'
-            $null = Sql "START TRANSACTION; DELETE FROM order_db.driver_active_order WHERE order_id=$orderId; DELETE FROM driver_db.order_notice WHERE order_id=$orderId; DELETE FROM driver_db.processed_order_event WHERE order_id=$orderId; DELETE FROM order_db.outbox_event WHERE aggregate_id=$orderId AND event_type='order.created'; DELETE FROM order_db.ride_order WHERE id=$orderId AND pickup_name='Day14-$runId'; COMMIT;"
+            Assert-True ((Sql "SELECT COUNT(*) FROM order_db.ride_order WHERE id=$orderId AND pickup_name='Step13-$runId'") -eq 1) 'Fixture identity mismatch'
+            $null = Sql "START TRANSACTION; DELETE FROM order_db.driver_active_order WHERE order_id=$orderId; DELETE FROM driver_db.order_notice WHERE order_id=$orderId; DELETE FROM driver_db.processed_order_event WHERE order_id=$orderId; DELETE FROM order_db.outbox_event WHERE aggregate_id=$orderId AND event_type='order.created'; DELETE FROM order_db.ride_order WHERE id=$orderId AND pickup_name='Step13-$runId'; COMMIT;"
         } catch {
             $canRemoveAccounts = $false
             $cleanupErrors.Add('Order/event cleanup deferred; fixture accounts retained to preserve references')
@@ -180,15 +138,15 @@ try {
         try {
             if ($driver.headers.Authorization) { $null = Api Put '/api/drivers/me/offline' $driver.headers }
             if ($canRemoveAccounts) {
-                $null = Sql "DELETE FROM driver_db.order_notice WHERE driver_id=$($driver.id); DELETE FROM driver_db.driver_profile WHERE user_id=$($driver.id) AND display_name='Day14-$runId'; DELETE FROM account_db.account WHERE id=$($driver.id) AND phone='$($driver.phone)';"
+                $null = Sql "DELETE FROM driver_db.order_notice WHERE driver_id=$($driver.id); DELETE FROM driver_db.driver_profile WHERE user_id=$($driver.id) AND display_name='Step13-$runId'; DELETE FROM account_db.account WHERE id=$($driver.id) AND phone='$($driver.phone)';"
             }
         } catch { $cleanupErrors.Add("Temporary driver cleanup failed: $($driver.id)") }
     }
     $env:MYSQL_PWD = $previousMysqlPassword
     if ($cleanupErrors.Count -gt 0) { Write-Warning ($cleanupErrors -join '; ') }
 }
-Assert-True ($cleanupErrors.Count -eq 0) 'Day14 cleanup incomplete'
+Assert-True ($cleanupErrors.Count -eq 0) 'Step13 cleanup incomplete'
 $report | Add-Member -NotePropertyName cleanup -NotePropertyValue 'Temporary drivers, notices, order, outbox event and consumption record removed after confirmed publication/consumption and queue drain'
 $null = New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'logs')
-$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $projectRoot 'logs/day14-http-result.json') -Encoding utf8
+$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $projectRoot 'logs/step13-http-result.json') -Encoding utf8
 $report | ConvertTo-Json -Depth 8

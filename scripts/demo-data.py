@@ -1,21 +1,21 @@
-"""Manage only journaled Day22 demo accounts/orders; never adopt legacy accounts."""
+"""Manage only journaled Step22 demo accounts/orders; never adopt legacy accounts."""
 import argparse
 import json
 import secrets
 import uuid
 
-from day19_support import (Fixture, ROOT, CONFIG_PATH, api, gateway, load_env, number,
+from step19_support import (Fixture, ROOT, CONFIG_PATH, api, gateway, load_env, number,
                            require, save, stamp)
 import hashlib
 
-POINTER = ROOT / 'logs/day22/demo.json'
-CREDENTIALS = ROOT / 'logs/day22/demo-accounts.local.json'
+POINTER = ROOT / 'logs/step22/demo.json'
+CREDENTIALS = ROOT / 'logs/step22/demo-accounts.local.json'
 
 
 class DemoFixture(Fixture):
     @property
     def marker(self):
-        return 'Day22-' + self.run_id
+        return 'Step22-' + self.run_id
 
     def profile_delete_sql(self, users):
         # Dedicated accounts may edit their display names through the UI.
@@ -24,7 +24,7 @@ class DemoFixture(Fixture):
 
     def seed_demo(self):
         require(self.data is None, 'Demo already exists')
-        self.data = {'schemaVersion': 1, 'purpose': 'day22-demo', 'runId': self.run_id, 'createdAt': stamp(),
+        self.data = {'schemaVersion': 1, 'purpose': 'step22-demo', 'runId': self.run_id, 'createdAt': stamp(),
                      'gateway': gateway(), 'fixtureSha256': hashlib.sha256(CONFIG_PATH.read_bytes()).hexdigest(),
                      'status': 'seeding', 'accounts': [], 'syntheticOrders': [], 'apiRequests': []}
         self.save()
@@ -50,7 +50,7 @@ class DemoFixture(Fixture):
         passengers = [int(a['id']) for a in self.passengers if a.get('id')]
         if not passengers:
             return []
-        from day19_support import sql
+        from step19_support import sql
         rows = sql(f"SELECT id FROM order_db.ride_order WHERE passenger_id IN ({','.join(map(str, passengers))})")
         return [int(row) for row in rows.splitlines()] if rows else []
 
@@ -59,7 +59,7 @@ class DemoFixture(Fixture):
         # them by dedicated passenger IDs and retain a snapshot before teardown.
         ids = self.owned_orders() if self.data and self.data['status'] != 'cleaned' else []
         if ids:
-            from day19_support import sql
+            from step19_support import sql
             self.validate_accounts()
             self.settle(ids)
             users = ','.join(str(int(a['id'])) for a in self.data['accounts'] if a.get('id'))
@@ -84,7 +84,7 @@ class DemoFixture(Fixture):
                 self.save()
 
     def _cleanup_demo(self, ids):
-        from day19_support import sql
+        from step19_support import sql
         self.validate_accounts()
         users = ','.join(str(int(a['id'])) for a in self.data['accounts'] if a.get('id'))
         joined = ','.join(map(str, ids))

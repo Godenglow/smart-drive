@@ -22,7 +22,7 @@ test('未登录访问受保护页面，提示登录并保留目标', async ({ pa
   await page.goto('/driver')
   await expect(page).toHaveURL(url => url.pathname === '/login' && url.searchParams.get('redirect') === '/driver')
   await expect(page.getByRole('status')).toContainText('请先登录')
-  await page.screenshot({ path: '../logs/day15-desktop-login.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step15-desktop-login.png', fullPage: true })
 })
 
 for (const [role, home, title] of [['PASSENGER', '/passenger', '乘客身份已就绪'], ['DRIVER', '/driver', '司机身份已就绪']]) {
@@ -66,7 +66,7 @@ test('注册校验、司机角色、重复点击和成功跳转', async ({ page 
     await route.fulfill({ json: { code: 0, data: { userId: 16 } } })
   })
   await page.goto('/register')
-  await page.screenshot({ path: '../logs/day15-desktop-register.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step15-desktop-register.png', fullPage: true })
   await page.getByRole('button', { name: '创建账号' }).click()
   await expect(page.getByRole('alert')).toContainText('11 位手机号')
   await page.getByLabel('手机号', { exact: true }).fill(phone)
@@ -88,10 +88,10 @@ test('注册校验、司机角色、重复点击和成功跳转', async ({ page 
 })
 
 test('错误密码与重复手机号展示业务错误和 requestId', async ({ page }) => {
-  await page.route('**/api/auth/**', route => route.fulfill({ status: route.request().url().endsWith('/login') ? 401 : 409, json: { code: route.request().url().endsWith('/login') ? 'UNAUTHORIZED' : 'PHONE_ALREADY_EXISTS', requestId: 'day15-error-trace' } }))
+  await page.route('**/api/auth/**', route => route.fulfill({ status: route.request().url().endsWith('/login') ? 401 : 409, json: { code: route.request().url().endsWith('/login') ? 'UNAUTHORIZED' : 'PHONE_ALREADY_EXISTS', requestId: 'step15-error-trace' } }))
   await login(page)
   await expect(page.getByRole('alert')).toContainText('手机号或密码错误')
-  await expect(page.getByRole('alert')).toContainText('day15-error-trace')
+  await expect(page.getByRole('alert')).toContainText('step15-error-trace')
   await page.goto('/register')
   await page.getByLabel('手机号', { exact: true }).fill(phone)
   await page.getByLabel('密码', { exact: true }).fill(password)

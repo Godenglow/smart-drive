@@ -7,7 +7,7 @@ import traceback
 from urllib.parse import quote
 import uuid
 
-from day19_support import (CONFIG, ROOT, Fixture, api, gateway, http, load_env, mq, number, queue, require,
+from step19_support import (CONFIG, ROOT, Fixture, api, gateway, http, load_env, mq, number, queue, require,
                            save, snapshot, sql, stamp, wait_until)
 
 
@@ -119,7 +119,7 @@ def main():
             save(fixture.directory / "environment.json", snapshot())
             fixture.seed(3, 3)
             report["live"] = live(fixture)
-            spec = importlib.util.spec_from_file_location("day19_load", ROOT / "scripts/load-day19.py")
+            spec = importlib.util.spec_from_file_location("step19_load", ROOT / "scripts/load-step19.py")
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             report["smoke"] = [module.run(fixture, scenario, 3, 2) for scenario in ("same-order", "same-driver")]
@@ -141,9 +141,9 @@ def main():
                     traceback.print_exc()
             report["finishedAt"] = stamp()
             save(fixture.directory / "verification.json", report)
-            save(ROOT / "logs/day19-http-result.json", report)
+            save(ROOT / "logs/step19-http-result.json", report)
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    require(not failed and report["passed"] and report["cleanupPassed"], "Day19 live verification failed; see logs/day19-http-result.json")
+    require(not failed and report["passed"] and report["cleanupPassed"], "Step19 live verification failed; see logs/step19-http-result.json")
 
 
 if __name__ == "__main__":

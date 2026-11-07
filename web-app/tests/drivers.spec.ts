@@ -140,7 +140,7 @@ test('过滤过时通知，局部详情失败不丢失其他待抢单', async ({
   await expect(page.getByRole('link', { name: /订单 #1701/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /订单 #1702|订单 #1703/ })).toHaveCount(0)
   await expect(page.getByRole('status')).toContainText('1 条通知详情')
-  await page.screenshot({ path: '../logs/day17-desktop-dashboard.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step17-desktop-dashboard.png', fullPage: true })
 })
 
 test('司机通过详情完成抢单、开始、完成；历史可恢复且不能模拟支付', async ({ page }) => {
@@ -158,7 +158,7 @@ test('司机通过详情完成抢单、开始、完成；历史可恢复且不�
   await page.getByRole('link', { name: /订单 #1701/ }).click()
   await page.reload()
   await expect(page.locator('.status-badge')).toHaveText('待支付')
-  await page.screenshot({ path: '../logs/day17-desktop-finished.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step17-desktop-finished.png', fullPage: true })
 })
 
 for (const code of ['ORDER_ALREADY_TAKEN', 'DRIVER_BUSY', 'DRIVER_OFFLINE']) {
@@ -168,12 +168,12 @@ for (const code of ['ORDER_ALREADY_TAKEN', 'DRIVER_BUSY', 'DRIVER_OFFLINE']) {
     page.on('request', request => { if (request.url().endsWith('/api/orders/1701')) reads++ })
     await page.route('**/api/orders/1701/accept', async route => {
       if (code === 'ORDER_ALREADY_TAKEN') model.orders[0]!.status = 'ACCEPTED'
-      await route.fulfill({ status: 409, json: { code, requestId: `day17-${code}` } })
+      await route.fulfill({ status: 409, json: { code, requestId: `step17-${code}` } })
     })
     await page.goto('/driver/orders/1701')
     await page.getByRole('button', { name: '抢单', exact: true }).click()
     await page.getByRole('button', { name: '确认抢单', exact: true }).click()
-    await expect(page.getByRole('alert')).toContainText(`day17-${code}`)
+    await expect(page.getByRole('alert')).toContainText(`step17-${code}`)
     await expect.poll(() => reads).toBeGreaterThan(1)
     if (code === 'ORDER_ALREADY_TAKEN') { await expect(page.getByRole('heading', { name: /已被其他司机接走/ })).toBeVisible(); await expect(page.getByRole('button', { name: '开始服务', exact: true })).toHaveCount(0) }
   })

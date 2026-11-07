@@ -1,4 +1,4 @@
-"""Run the complete Day20 acceptance matrix and retain each request and SQL snapshot."""
+"""Run the complete Step20 acceptance matrix and retain each request and SQL snapshot."""
 import hashlib
 import importlib.util
 import json
@@ -6,9 +6,9 @@ from pathlib import Path
 import sys
 import uuid
 
-from day19_support import Fixture, ROOT, load_env, require, save, snapshot, stamp
+from step19_support import Fixture, ROOT, load_env, require, save, snapshot, stamp
 
-spec = importlib.util.spec_from_file_location("load_day19", Path(__file__).with_name("load-day19.py"))
+spec = importlib.util.spec_from_file_location("load_step19", Path(__file__).with_name("load-step19.py"))
 load = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(load)
 
@@ -59,8 +59,8 @@ def matrix_complete(cells):
 def main():
     load_env()
     fixture = Fixture(str(uuid.uuid4()))
-    output = fixture.directory / "day20-result.json"
-    result = {"day": 20, "runId": fixture.run_id, "startedAt": stamp(), "passed": False,
+    output = fixture.directory / "step20-result.json"
+    result = {"step": 20, "runId": fixture.run_id, "startedAt": stamp(), "passed": False,
               "cleanupPassed": False, "levels": LEVELS, "roundsPerCell": ROUNDS, "cells": [],
               "fixture": {"drivers": 500, "orders": 500, "passengers": 2},
               "scope": "Gateway/JWT/eligibility/Redis/MySQL acceptance; SQL-seeded notices; no MQ load"}
@@ -80,7 +80,7 @@ def main():
                     save(output, result)
                     print(f"Passed {scenario}/{concurrency}", flush=True)
             result["matrixPassed"] = matrix_complete(result["cells"])
-            require(result["matrixPassed"], "Incomplete Day20 matrix")
+            require(result["matrixPassed"], "Incomplete Step20 matrix")
         except Exception as error:
             # Never print exception text from network/configuration libraries containing credentials.
             result["errorType"] = type(error).__name__
@@ -94,12 +94,12 @@ def main():
                     result["cleanupPassed"] = fixture.data.get("cleanupVerified") is True
                 except Exception as error:
                     result["cleanupErrorType"] = type(error).__name__
-                    print("Cleanup failed; retain manifest and use day19-data.py cleanup --run-id "
+                    print("Cleanup failed; retain manifest and use step19-data.py cleanup --run-id "
                           + fixture.run_id, flush=True)
             result["finishedAt"] = stamp()
             result["passed"] = result.get("matrixPassed", False) and result["cleanupPassed"]
             save(output, result)
-            save(ROOT / "logs/day20-result.json", result)
+            save(ROOT / "logs/step20-result.json", result)
     print(json.dumps({"runId": fixture.run_id, "passed": result["passed"],
                       "completedCells": len(result["cells"]), "cleanupPassed": result["cleanupPassed"],
                       "result": str(output)}, indent=2), flush=True)

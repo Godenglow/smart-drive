@@ -1,4 +1,4 @@
-"""Local-only, standard-library helpers for repeatable Day19 fixtures and HTTP tests."""
+"""Local-only, standard-library helpers for repeatable Step19 fixtures and HTTP tests."""
 from __future__ import annotations
 
 import base64
@@ -21,9 +21,9 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_PATH = ROOT / "scripts/fixtures/day19.json"
+CONFIG_PATH = ROOT / "scripts/fixtures/step19.json"
 CONFIG = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-RUNS = ROOT / "logs/day19/runs"
+RUNS = ROOT / "logs/step19/runs"
 # Loading the Windows certificate store for every HTTP request serializes the load
 # generator even for plain HTTP. Share only the immutable TLS context; handlers
 # remain local to each thread, and urllib still closes each TCP connection.
@@ -52,7 +52,7 @@ def load_env():
             parsed = urllib.parse.urlsplit(value.removeprefix("jdbc:"))
             require(parsed.hostname in ("localhost", "127.0.0.1") and
                     (parsed.port or 3306) == 3306 and parsed.path == f"/{database}",
-                    f"{key} must point to the fixed local Day19 database")
+                    f"{key} must point to the fixed local Step19 database")
     for key in ("SMARTDRIVE_GATEWAY_URL", "RABBITMQ_MANAGEMENT_URL"):
         value = os.environ.get(key)
         if value:
@@ -167,7 +167,7 @@ def snapshot(health_ports=None):
         versions[name] = (result.stdout + result.stderr).strip()
     hashes = {str(p.relative_to(ROOT)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
               for pattern in ("pom.xml", "*/pom.xml", "db/*.sql", "scripts/*.py", "scripts/fixtures/*.json",
-                              "scripts/verify-day19.ps1", "*/src/main/resources/application.yml")
+                              "scripts/verify-step19.ps1", "*/src/main/resources/application.yml")
               for p in ROOT.glob(pattern)}
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True)
     return {"capturedAt": stamp(), "os": platform.platform(), "cpu": platform.processor(),
@@ -224,7 +224,7 @@ class Fixture:
 
     @property
     def marker(self):
-        return "Day19-" + self.run_id
+        return "Step19-" + self.run_id
 
     @property
     def passengers(self):

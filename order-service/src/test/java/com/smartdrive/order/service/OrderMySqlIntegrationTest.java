@@ -50,7 +50,7 @@ class OrderMySqlIntegrationTest {
                 new ObjectMapper().findAndRegisterModules(), new DataSourceTransactionManager(datasource)));
         long passengerId = ThreadLocalRandom.current().nextLong(1_000_000_000L, 9_000_000_000L);
         Principal passenger = new Principal(passengerId, "PASSENGER");
-        Place place = new Place("Day9 集成测试", new BigDecimal("117.215"), new BigDecimal("39.136"));
+        Place place = new Place("Step9 集成测试", new BigDecimal("117.215"), new BigDecimal("39.136"));
         CreateOrderRequest request = new CreateOrderRequest(UUID.randomUUID(), place, place);
         ExecutorService pool = Executors.newFixedThreadPool(12);
         try {

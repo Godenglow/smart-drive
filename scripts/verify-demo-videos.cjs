@@ -6,8 +6,8 @@ const { pathToFileURL } = require('node:url')
 
 ;(async () => {
   const directory = path.resolve(process.argv[2] || '')
-  const allowed = path.resolve(__dirname, '../logs/day22') + path.sep
-  if (!directory.startsWith(allowed)) throw new Error('Expected a Day22 evidence directory')
+  const allowed = path.resolve(__dirname, '../logs/step22') + path.sep
+  if (!directory.startsWith(allowed)) throw new Error('Expected a Step22 evidence directory')
   const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'chrome' })
   const videos = []
   try {

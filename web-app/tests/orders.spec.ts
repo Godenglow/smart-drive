@@ -44,7 +44,7 @@ test('创建中禁用重复点击，成功进入详情并清除草稿', async ({
   expect(bodies).toHaveLength(1)
   expect(bodies[0]?.requestId).toMatch(/^[\da-f-]{36}$/)
   expect(await page.evaluate(() => sessionStorage.getItem('smartdrive.order-draft.16'))).toBeNull()
-  await page.screenshot({ path: '../logs/day16-desktop-detail.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step16-desktop-detail.png', fullPage: true })
 })
 
 test('网络失败及刷新保留内容和幂等键，再次确认复用原请求', async ({ page }) => {
@@ -62,14 +62,14 @@ test('网络失败及刷新保留内容和幂等键，再次确认复用原请�
 })
 
 test('明确无司机错误保留并解锁表单，修改坐标后可重试', async ({ page }) => {
-  await page.route('**/api/orders', route => route.fulfill({ status: 409, json: { code: 'NO_DRIVER_NEARBY', requestId: 'day16-no-driver' } }))
+  await page.route('**/api/orders', route => route.fulfill({ status: 409, json: { code: 'NO_DRIVER_NEARBY', requestId: 'step16-no-driver' } }))
   await preset(page)
   await page.getByRole('button', { name: '确认下单' }).click()
   await expect(page.getByRole('alert')).toContainText('附近暂无在线司机')
-  await expect(page.getByRole('alert')).toContainText('day16-no-driver')
+  await expect(page.getByRole('alert')).toContainText('step16-no-driver')
   await expect(page.getByLabel('上车地点名称')).toBeEnabled()
   await expect(page.getByLabel('上车地点名称')).toHaveValue('天津站')
-  await page.screenshot({ path: '../logs/day16-desktop-create.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step16-desktop-create.png', fullPage: true })
 })
 
 test('超时与非 JSON 502 均保留原单待确认', async ({ page }) => {
@@ -111,7 +111,7 @@ test('列表空态、分页、错误保留与详情入口', async ({ page }) => 
   fail = false
   await page.getByRole('button', { name: '上一页' }).click()
   await expect(page.getByText('订单 #1601')).toBeVisible()
-  await page.screenshot({ path: '../logs/day16-desktop-list.png', fullPage: true })
+  await page.screenshot({ path: '../logs/step16-desktop-list.png', fullPage: true })
   await page.route('**/api/orders/mine?*', route => route.fulfill({ json: { code: 0, data: { page: 1, size: 10, total: 0, items: [] } } }))
   await page.getByRole('button', { name: '刷新订单' }).click()
   await expect(page.getByRole('heading', { name: '还没有这一程的记录' })).toBeVisible()

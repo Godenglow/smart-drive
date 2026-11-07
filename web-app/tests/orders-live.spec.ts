@@ -2,11 +2,11 @@ import { test, expect, type APIRequestContext } from '@playwright/test'
 import { appendFileSync } from 'node:fs'
 import { randomInt, randomUUID } from 'node:crypto'
 
-test.skip(process.env.SMARTDRIVE_DAY16_LIVE !== 'true', '通过 scripts/verify-day16.ps1 -Live 启用真实服务并清理临时数据')
+test.skip(process.env.SMARTDRIVE_STEP16_LIVE !== 'true', '通过 scripts/verify-step16.ps1 -Live 启用真实服务并清理临时数据')
 
 test('真实 Gateway：浏览器下单、取消、列表，MQ 通知后司机履约，乘客轮询并模拟支付', async ({ page, request }) => {
   test.setTimeout(90000)
-  const password = 'Day16!' + randomUUID()
+  const password = 'Step16!' + randomUUID()
   async function api(context: APIRequestContext, method: string, path: string, data?: unknown, token = '') {
     const response = await context.fetch(path, { method, data, headers: token ? { Authorization: `Bearer ${token}` } : {} })
     expect(response.ok(), `${method} ${path}: HTTP ${response.status()}`).toBe(true)
@@ -17,7 +17,7 @@ test('真实 Gateway：浏览器下单、取消、列表，MQ 通知后司机履
   async function account(role: string) {
     const phone = '199' + randomInt(10000000, 99999999)
     const registered = await api(request, 'POST', '/api/auth/register', { phone, password, role })
-    appendFileSync('../logs/day16-created-accounts.jsonl', JSON.stringify({ userId: registered.userId, phone, role }) + '\n')
+    appendFileSync('../logs/step16-created-accounts.jsonl', JSON.stringify({ userId: registered.userId, phone, role }) + '\n')
     const login = await api(request, 'POST', '/api/auth/login', { phone, password })
     return { phone, token: login.accessToken as string, userId: registered.userId }
   }
@@ -25,7 +25,7 @@ test('真实 Gateway：浏览器下单、取消、列表，MQ 通知后司机履
   const driver = await account('DRIVER')
   let online = false
   try {
-    await api(request, 'PUT', '/api/drivers/me/profile', { displayName: 'Day16-browser-fixture' }, driver.token)
+    await api(request, 'PUT', '/api/drivers/me/profile', { displayName: 'Step16-browser-fixture' }, driver.token)
     await api(request, 'PUT', '/api/drivers/me/online', { lng: 117.215, lat: 39.136 }, driver.token)
     online = true
     await page.goto('/login')
@@ -61,14 +61,14 @@ test('真实 Gateway：浏览器下单、取消、列表，MQ 通知后司机履
         await expect(page.locator('.status-badge')).toHaveText('已支付')
         await page.reload()
         await expect(page.locator('.status-badge')).toHaveText('已支付')
-        await page.screenshot({ path: '../logs/day16-live-paid.png', fullPage: true })
+        await page.screenshot({ path: '../logs/step16-live-paid.png', fullPage: true })
       }
     }
     await page.getByRole('link', { name: '返回我的订单' }).click()
     for (const id of ids) await expect(page.getByText(`订单 #${id}`, { exact: true })).toBeVisible()
     await expect(page.locator('.status-badge.PAID')).toHaveCount(1)
     await expect(page.locator('.status-badge.CANCELLED')).toHaveCount(1)
-    await page.screenshot({ path: '../logs/day16-live-list.png', fullPage: true })
+    await page.screenshot({ path: '../logs/step16-live-list.png', fullPage: true })
   } finally {
     if (online) await api(request, 'PUT', '/api/drivers/me/offline', undefined, driver.token)
   }

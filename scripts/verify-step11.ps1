@@ -24,7 +24,7 @@ $passenger = $null
 
 function Sql([string]$statement) {
     $result = & mysql.exe --host=127.0.0.1 "--user=$dbUser" --default-character-set=utf8mb4 --batch --skip-column-names "--execute=$statement"
-    if ($LASTEXITCODE -ne 0) { throw 'Day11 test SQL failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Step11 test SQL failed' }
     return $result
 }
 function Assert-True($condition, [string]$message) {
@@ -52,7 +52,7 @@ function Account([string]$role) {
     return $account
 }
 function New-Order {
-    $place = @{name="Day11-$runId";lng=117.215;lat=39.136}
+    $place = @{name="Step11-$runId";lng=117.215;lat=39.136}
     $created = Api Post '/api/orders' $passenger.headers @{requestId=[Guid]::NewGuid().ToString();pickup=$place;dropoff=$place} 201
     $orders.Add([long]$created.id)
     Wait-OrderMatching @([long]$created.id)
@@ -81,7 +81,7 @@ try {
     $otherPassenger = Account PASSENGER
     $driver = Account DRIVER
     $otherDriver = Account DRIVER
-    $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Day11-$runId"} 200
+    $null = Api Put '/api/drivers/me/profile' $driver.headers @{displayName="Step11-$runId"} 200
     $null = Api Put '/api/drivers/me/online' $driver.headers @{lng=117.215;lat=39.136} 200
     $id = New-Order
     foreach ($action in @('start','finish','pay-demo')) {
@@ -167,15 +167,15 @@ try {
         } catch { $cleanupErrors.Add("Test order cleanup failed for $id") }
     }
     foreach ($account in $accounts) {
-        try { $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($account.id) AND display_name='Day11-$runId'; DELETE FROM account_db.account WHERE id=$($account.id) AND phone='$($account.phone)';" }
+        try { $null = Sql "DELETE FROM driver_db.driver_profile WHERE user_id=$($account.id) AND display_name='Step11-$runId'; DELETE FROM account_db.account WHERE id=$($account.id) AND phone='$($account.phone)';" }
         catch { $cleanupErrors.Add("Test account cleanup failed for $($account.id)") }
     }
     } finally { $env:MYSQL_PWD = $previousMysqlPassword }
     if ($cleanupErrors.Count -gt 0) { Write-Warning ($cleanupErrors -join '; ') }
 }
-Assert-True ($cleanupErrors.Count -eq 0) 'Day11 test cleanup did not finish'
+Assert-True ($cleanupErrors.Count -eq 0) 'Step11 test cleanup did not finish'
 $logDir = Join-Path $projectRoot 'logs'
 $null = New-Item -ItemType Directory -Force -Path $logDir
 $report | Add-Member -NotePropertyName cleanup -NotePropertyValue 'Verified: only this run test rows removed'
-$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $logDir 'day11-http-result.json') -Encoding utf8
+$report | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $logDir 'step11-http-result.json') -Encoding utf8
 $report | ConvertTo-Json -Depth 8

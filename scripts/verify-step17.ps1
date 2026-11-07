@@ -12,14 +12,14 @@ if (Test-Path $localEnv) {
     }
 }
 $null = New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'logs')
-$createdFile = Join-Path $projectRoot 'logs/day17-created-accounts.jsonl'
-$reportPath = Join-Path $projectRoot 'logs/day17-verification.json'
+$createdFile = Join-Path $projectRoot 'logs/step17-created-accounts.jsonl'
+$reportPath = Join-Path $projectRoot 'logs/step17-verification.json'
 $oldMysqlPassword = $env:MYSQL_PWD
-$oldLive = $env:SMARTDRIVE_DAY17_LIVE
+$oldLive = $env:SMARTDRIVE_STEP17_LIVE
 $oldOutput = $env:PLAYWRIGHT_JSON_OUTPUT
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
-$env:SMARTDRIVE_DAY17_LIVE = if ($Live) { 'true' } else { 'false' }
-$env:PLAYWRIGHT_JSON_OUTPUT = '../logs/day17-browser-results.json'
+$env:SMARTDRIVE_STEP17_LIVE = if ($Live) { 'true' } else { 'false' }
+$env:PLAYWRIGHT_JSON_OUTPUT = '../logs/step17-browser-results.json'
 $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smartdrive' }
 $testPassed = $false
 $startedLive = $false
@@ -28,23 +28,23 @@ $ordersVerified = 0
 $cleanupErrors = [Collections.Generic.List[string]]::new()
 function Sql([string]$statement) {
     $result = & mysql.exe --host=127.0.0.1 "--user=$dbUser" --batch --skip-column-names "--execute=$statement"
-    if ($LASTEXITCODE -ne 0) { throw 'Day17 SQL failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Step17 SQL failed' }
     return $result
 }
 Push-Location (Join-Path $projectRoot 'web-app')
 try {
     if ($Live) {
         if (-not $env:SMARTDRIVE_DB_PASSWORD) { throw '真实验收需要 SMARTDRIVE_DB_PASSWORD，以核对并清理临时数据。' }
-        if (Test-Path $createdFile) { throw '存在上次未清理的 Day17 数据清单，请先核对处理，避免覆盖。' }
+        if (Test-Path $createdFile) { throw '存在上次未清理的 Step17 数据清单，请先核对处理，避免覆盖。' }
         $null = Sql 'SELECT COUNT(*) FROM order_db.ride_order;'
         $startedLive = $true
     }
     & npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw '前端构建失败' }
-    # 回归 Day15/16 的模拟和移动页面；Day17 真实链路通过司机浏览器完成。
+    # 回归 Step15/16 的模拟和移动页面；Step17 真实链路通过司机浏览器完成。
     & npm.cmd test -- --project=chromium --project=mobile --project=orders --project=orders-mobile --project=drivers --project=drivers-mobile --project=drivers-live
-    if ($LASTEXITCODE -ne 0) { throw '浏览器验收失败，见 logs/day17-browser-results.json' }
-    $browser = Get-Content (Join-Path $projectRoot 'logs/day17-browser-results.json') -Raw | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) { throw '浏览器验收失败，见 logs/step17-browser-results.json' }
+    $browser = Get-Content (Join-Path $projectRoot 'logs/step17-browser-results.json') -Raw | ConvertFrom-Json
     if ($Live -and ($browser.stats.skipped -ne 0 -or $browser.stats.unexpected -ne 0 -or $browser.stats.flaky -ne 0)) { throw '真实验收不允许跳过、失败或 flaky 测试' }
     $testPassed = $true
 } finally {
@@ -89,14 +89,14 @@ try {
             foreach ($account in $accounts) {
                 $id = [long]$account.userId
                 if ([int](Sql "SELECT COUNT(*) FROM order_db.ride_order WHERE passenger_id=$id OR driver_id=$id;") -ne 0) { throw '仍有订单引用临时账号，保留账号' }
-                $null = Sql "DELETE FROM driver_db.order_notice WHERE driver_id=$id; DELETE FROM driver_db.driver_profile WHERE user_id=$id AND display_name='Day17-browser-fixture'; DELETE FROM account_db.account WHERE id=$id AND phone='$($account.phone)';"
+                $null = Sql "DELETE FROM driver_db.order_notice WHERE driver_id=$id; DELETE FROM driver_db.driver_profile WHERE user_id=$id AND display_name='Step17-browser-fixture'; DELETE FROM account_db.account WHERE id=$id AND phone='$($account.phone)';"
                 if ([int](Sql "SELECT COUNT(*) FROM account_db.account WHERE id=$id AND phone='$($account.phone)';") -ne 0) { throw '临时账号清理核对失败' }
             }
             Remove-Item -LiteralPath $createdFile
         } catch { $cleanupErrors.Add($_.Exception.Message) }
     }
     $env:MYSQL_PWD = $oldMysqlPassword
-    $env:SMARTDRIVE_DAY17_LIVE = $oldLive
+    $env:SMARTDRIVE_STEP17_LIVE = $oldLive
     $env:PLAYWRIGHT_JSON_OUTPUT = $oldOutput
     @{timestamp=(Get-Date).ToString('o'); live=[bool]$Live; testPassed=$testPassed; accountsVerified=$accountsVerified; ordersVerified=$ordersVerified; cleanupPassed=($cleanupErrors.Count -eq 0); cleanupErrors=@($cleanupErrors)} | ConvertTo-Json -Depth 5 | Set-Content $reportPath
     if ($cleanupErrors.Count) { throw "临时数据核对/清理失败，见 $reportPath" }

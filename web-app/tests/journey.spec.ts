@@ -15,7 +15,7 @@ test('抢单冲突立即取代旧轮询，显示最新归属并取消旧确认',
   })
   await page.route('**/api/orders/1701/accept', route => {
     model.orders[0]!.status = 'ACCEPTED'
-    return route.fulfill({ status: 409, json: { code: 'ORDER_ALREADY_TAKEN', requestId: 'day18-conflict' } })
+    return route.fulfill({ status: 409, json: { code: 'ORDER_ALREADY_TAKEN', requestId: 'step18-conflict' } })
   })
   try {
     await page.clock.fastForward(5100)
@@ -23,7 +23,7 @@ test('抢单冲突立即取代旧轮询，显示最新归属并取消旧确认',
     await page.getByRole('button', { name: '抢单', exact: true }).click()
     await page.getByRole('button', { name: '确认抢单', exact: true }).click()
     // 不推进下一次轮询的时钟：冲突后必须立刻发起第二次读取。
-    await expect(page.getByRole('alert')).toContainText('day18-conflict')
+    await expect(page.getByRole('alert')).toContainText('step18-conflict')
     await expect(page.getByRole('heading', { name: /已被其他司机接走/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /确认抢单|开始服务/ })).toHaveCount(0)
     expect(reads).toBe(2)

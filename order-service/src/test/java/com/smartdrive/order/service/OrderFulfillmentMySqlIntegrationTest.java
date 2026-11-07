@@ -84,7 +84,7 @@ class OrderFulfillmentMySqlIntegrationTest {
             OrderMapper fault = mock(OrderMapper.class, delegatesTo(orders));
             doAnswer(call -> {
                 assertEquals(1, orders.releaseDriver(call.getArgument(0), call.getArgument(1)));
-                throw new IllegalStateException("Day11 injected failure after real occupation deletion");
+                throw new IllegalStateException("Step11 injected failure after real occupation deletion");
             }).when(fault).releaseDriver(anyLong(), anyLong());
             return new OrderFulfillmentService(fault);
         }
@@ -117,7 +117,7 @@ class OrderFulfillmentMySqlIntegrationTest {
             assertEquals(List.of(next, id), driverHistory.items().stream().map(OrderView::id).toList());
             assertEquals("PAID", driverHistory.items().getLast().status());
             assertEquals(0, f.passengers.mine(new Principal(f.driver.userId() + 1, "DRIVER"), 1, 10).total());
-            System.out.println("Day11 full-lifecycle=PAID released-before-payment=true histories=PASS amount=50.00");
+            System.out.println("Step11 full-lifecycle=PAID released-before-payment=true histories=PASS amount=50.00");
         }
     }
 
@@ -139,7 +139,7 @@ class OrderFulfillmentMySqlIntegrationTest {
                 assertEquals(next, f.orders.findActiveOrder(f.driver.userId()));
                 f.service.start(f.driver, next);
                 f.service.finish(f.driver, next);
-                System.out.printf("Day11 duplicates round=%d start/finish/pay attempts=10 each success=1 conflicts=9 next-occupation-preserved=true%n", round + 1);
+                System.out.printf("Step11 duplicates round=%d start/finish/pay attempts=10 each success=1 conflicts=9 next-occupation-preserved=true%n", round + 1);
             }
         }
     }
@@ -155,7 +155,7 @@ class OrderFulfillmentMySqlIntegrationTest {
             assertEquals(id, f.orders.findActiveOrder(f.driver.userId()));
             assertEquals("FINISHED", f.service.finish(f.driver, id).status());
             assertNull(f.orders.findActiveOrder(f.driver.userId()));
-            System.out.println("Day11 failure-after-delete rollback-status-and-occupation=PASS retry=PASS");
+            System.out.println("Step11 failure-after-delete rollback-status-and-occupation=PASS retry=PASS");
         }
     }
 
@@ -212,7 +212,7 @@ class OrderFulfillmentMySqlIntegrationTest {
         final List<Long> ids = new ArrayList<>();
 
         long create(Principal owner) {
-            Place place = new Place("Day11 integration", new BigDecimal("117.215"), new BigDecimal("39.136"));
+            Place place = new Place("Step11 integration", new BigDecimal("117.215"), new BigDecimal("39.136"));
             long id = passengers.create(owner, new CreateOrderRequest(UUID.randomUUID(), place, place)).id();
             ids.add(id);
             return id;

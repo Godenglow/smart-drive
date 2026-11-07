@@ -303,7 +303,7 @@ class MatchingIntegrationTest {
     }
 
     static class Broker implements AutoCloseable {
-        final String vhost = "smartdrive-day13-" + UUID.randomUUID();
+        final String vhost = "smartdrive-step13-" + UUID.randomUUID();
         final String user = System.getenv().getOrDefault("RABBITMQ_USER", "guest");
         final String password = System.getenv().getOrDefault("RABBITMQ_PASSWORD", "guest");
         final HttpClient http = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)

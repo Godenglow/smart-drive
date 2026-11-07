@@ -96,7 +96,7 @@ class OutboxRabbitIntegrationTest {
     }
 
     static class Broker implements AutoCloseable {
-        final String vhost = "smartdrive-day12-" + UUID.randomUUID();
+        final String vhost = "smartdrive-step12-" + UUID.randomUUID();
         final String user = System.getenv().getOrDefault("RABBITMQ_USER", "guest");
         final String password = System.getenv().getOrDefault("RABBITMQ_PASSWORD", "guest");
         final String management = System.getenv().getOrDefault("RABBITMQ_MANAGEMENT_URL", "http://localhost:15672");
@@ -157,7 +157,7 @@ class OutboxRabbitIntegrationTest {
             try { connection.destroy(); }
             finally {
                 // Only this fixture's UUID vhost is removed, never a shared/default vhost.
-                assertTrue(vhost.startsWith("smartdrive-day12-"));
+                assertTrue(vhost.startsWith("smartdrive-step12-"));
                 try { request("DELETE", "/api/vhosts/" + vhost, null); }
                 finally { http.close(); }
             }

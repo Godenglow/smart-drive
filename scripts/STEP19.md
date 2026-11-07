@@ -1,11 +1,11 @@
-# Day19 集成验收与固定压测数据
+# Step19 集成验收与固定压测数据
 
 在项目根执行。需要 JDK 21、Maven 3.8.6、本机 MySQL 客户端、PowerShell 7、Python 3.10+（仅标准库，无 pip 依赖）。沿用父 POM、各模块 POM、前端 lockfile 锁定的版本。先按根 README 启动 MySQL、Redis、RabbitMQ、Nacos、三个业务服务和 Gateway，8080–8083 健康检查都应为 UP。
 
 ## 一键验收
 
 ```powershell
-pwsh -NoProfile -File scripts/verify-day19.ps1
+pwsh -NoProfile -File scripts/verify-step19.ps1
 ```
 
 入口默认隔离运行中的 Outbox 发布器（兼容显式 `-IsolatePublisher`）：确认 outbox/MQ 已收敛并核实本项目订单服务身份后，临时停止 order-service，避免测试事件被运行中的发布器发送到真实司机消费者。Maven 结束或失败时自动恢复服务，再进入真实 HTTP 验收。入口会启用并最终恢复三个 `SMARTDRIVE_*_INTEGRATION` 开关，执行工具自检、`mvn.cmd -o test`、真实 HTTP/MQ 验收与两类抢单的 3 并发各 2 轮冒烟。仅删除旧 Surefire XML，不运行 `clean`，避免 Windows 中运行的 JAR 被锁定。检查报告新鲜度、必需的 8 个集成套件和全仓零失败/错误/跳过。离线依赖未缓存时先按 README 完成 Maven 构建。
@@ -15,7 +15,7 @@ pwsh -NoProfile -File scripts/verify-day19.ps1
 | 覆盖 | 自动化入口 | 实际依赖 / 替身边界 |
 | --- | --- | --- |
 | 注册唯一键、BCrypt、登录、本人身份与角色、过期/伪造令牌 | `AccountMySqlIntegrationTest` | MySQL + MyBatis + BCrypt + ServletAuthFilter；HTTP 为 MockMvc |
-| 网关与业务接口角色/参数/归属规则 | `JwtGlobalFilterTest`、各 `*ControllerTest`；`verify-day19.py` | 单元层使用替身；HTTP 层为运行中的真实服务 |
+| 网关与业务接口角色/参数/归属规则 | `JwtGlobalFilterTest`、各 `*ControllerTest`；`verify-step19.py` | 单元层使用替身；HTTP 层为运行中的真实服务 |
 | 幂等创建、取消、非法状态不变 | `OrderMySqlIntegrationTest` | 真实 MySQL 事务；附近司机调用替身 |
 | 两种抢单竞争、取消竞争、失败回滚 | `OrderAcceptanceMySqlIntegrationTest` | 真实 MySQL + Spring 事务代理；资格调用替身，通知写真实司机库 |
 | 开始/完成/支付并发、占用释放、历史隔离、回滚 | `OrderFulfillmentMySqlIntegrationTest` | 真实 MySQL + Spring 事务代理；远程资格替身 |
@@ -23,7 +23,7 @@ pwsh -NoProfile -File scripts/verify-day19.ps1
 | confirm、return、持久化路由 | `OutboxRabbitIntegrationTest` | 真实 RabbitMQ；UUID 独立 vhost，测试后删除 |
 | GEO、TTL、过滤与限额 | `DriverRedisIntegrationTest` | 真实 Redis，本批独立用户 ID |
 | 并发重复消息、通知事务回滚、重试、DLQ、修复重放 | `MatchingIntegrationTest` | 真实 MySQL/Redis；broker 用例使用独立 vhost |
-| 完整 Gateway、真实通知与重复投递 | `verify-day19.py` | MySQL/Redis/RabbitMQ/Nacos/四服务全链路 |
+| 完整 Gateway、真实通知与重复投递 | `verify-step19.py` | MySQL/Redis/RabbitMQ/Nacos/四服务全链路 |
 
 ## 环境与配置
 
@@ -31,24 +31,24 @@ pwsh -NoProfile -File scripts/verify-day19.ps1
 
 RabbitMQ 账号需有管理 API 与创建/删除测试 vhost 的权限。数据工具只向已有 `ride.events` 发布本批原事件，不停止 broker、不 purge 队列、不清空库或 Redis。验收期间请暂停其他压测和本项目写入，以便固定 GEO 候选、队列及测量环境。
 
-固定业务参数见 `fixtures/day19.json`：起点 (118.8,36.5)、终点 (118.82,36.51)、金额 50.00、HTTP 超时 30 秒、收敛等待 60 秒。两个乘客 + N 个司机、N 笔 WAITING 订单默认 N=10，最多 500。每批 UUID 隔离账号与订单；手机号/密码随机，requestId 用批次 UUID 派生，重置复用原账号/订单/通知。
+固定业务参数见 `fixtures/step19.json`：起点 (118.8,36.5)、终点 (118.82,36.51)、金额 50.00、HTTP 超时 30 秒、收敛等待 60 秒。两个乘客 + N 个司机、N 笔 WAITING 订单默认 N=10，最多 500。每批 UUID 隔离账号与订单；手机号/密码随机，requestId 用批次 UUID 派生，重置复用原账号/订单/通知。
 
 每批保存 `environment.json`：OS/CPU/Python/JDK/Maven/MySQL/Redis/RabbitMQ 版本、MySQL 隔离级别与表引擎、服务健康、MQ 积压、固定参数、Git HEAD 及脚本/POM/DDL/服务配置 SHA256。每次 load 单独保存当时的环境快照。结果仅适用于所附环境。
 
 ## 生成、查看、重置与清理
 
 ```powershell
-python scripts/day19-data.py seed --drivers 10 --orders 10
+python scripts/step19-data.py seed --drivers 10 --orders 10
 # 复制上一步输出的 runId。也可以 seed 时用 --run-id 指定一个新的 UUID。
 $runId = '<上一步 runId>'
-python scripts/day19-data.py inspect --run-id $runId
-python scripts/day19-data.py reset --run-id $runId
-python scripts/day19-data.py cleanup --run-id $runId
+python scripts/step19-data.py inspect --run-id $runId
+python scripts/step19-data.py reset --run-id $runId
+python scripts/step19-data.py cleanup --run-id $runId
 ```
 
 seed 通过真实注册/登录接口生成账号，密码由 BCrypt 入库；通过司机接口保存资料。为隔离抢单事务的竞争，固定订单由 SQL 生成，**不生成 outbox、不触发自动匹配**；第一单给全部司机显式插入候选通知，其余订单只给第一位司机通知，总通知数 `drivers + orders - 1`。正常业务仍然保持最多 5 个匹配候选。seed 后司机离线，load 才刷新在线 TTL。
 
-清单位于 `logs/day19/runs/<runId>/manifest.json`，先记下待注册账号/待建订单再写入；异常时可以用同一个 runId 清理，注册响应丢失时需先以该临时密码证明账号归属。每批持有操作系统文件锁，同批 load/reset/cleanup 不能同时执行；进程结束会自动释放锁。
+清单位于 `logs/step19/runs/<runId>/manifest.json`，先记下待注册账号/待建订单再写入；异常时可以用同一个 runId 清理，注册响应丢失时需先以该临时密码证明账号归属。每批持有操作系统文件锁，同批 load/reset/cleanup 不能同时执行；进程结束会自动释放锁。
 
 reset 只将本批固定订单恢复 WAITING、清空归属并释放相应占用，不重建账号、通知，不重置真实 HTTP/MQ 订单。固定参数文件的 SHA256 必须与 seed 时一致；发现参数改变、本批司机占用了其他订单或订单归属外部司机，会保留现场并失败。
 
@@ -59,19 +59,19 @@ cleanup 先等待本批 outbox SENT、消费记录匹配，且共享主队列 re
 ## 抢单脚本
 
 ```powershell
-python scripts/day19-data.py seed --drivers 10 --orders 10
+python scripts/step19-data.py seed --drivers 10 --orders 10
 $runId = '<上一步 runId>'
 try {
-    python scripts/load-day19.py --run-id $runId --scenario same-order --concurrency 10 --rounds 3
+    python scripts/load-step19.py --run-id $runId --scenario same-order --concurrency 10 --rounds 3
     if ($LASTEXITCODE -ne 0) { throw 'same-order failed; inspect raw results' }
-    python scripts/load-day19.py --run-id $runId --scenario same-driver --concurrency 10 --rounds 3
+    python scripts/load-step19.py --run-id $runId --scenario same-driver --concurrency 10 --rounds 3
     if ($LASTEXITCODE -ne 0) { throw 'same-driver failed; inspect raw results' }
 } finally {
-    python scripts/day19-data.py cleanup --run-id $runId
+    python scripts/step19-data.py cleanup --run-id $runId
 }
 ```
 
-Day20 的 100/500 档使用相同入口，seed 的司机数、订单数均至少等于该档并发数。`--rounds` 默认 3；每轮自动 reset、重新登录、上线续期、创建对应数量的客户端线程，然后用 barrier 一起释放请求。设置阶段不计入测量。每个请求单独 TCP 连接、无自动重试；默认连接/读取超时为 30 秒。这是 Python 客户端的并发 HTTP 测量，操作系统调度与本机客户端开销都会影响结果。
+Step20 的 100/500 档使用相同入口，seed 的司机数、订单数均至少等于该档并发数。`--rounds` 默认 3；每轮自动 reset、重新登录、上线续期、创建对应数量的客户端线程，然后用 barrier 一起释放请求。设置阶段不计入测量。每个请求单独 TCP 连接、无自动重试；默认连接/读取超时为 30 秒。这是 Python 客户端的并发 HTTP 测量，操作系统调度与本机客户端开销都会影响结果。
 
 | 场景 | 期望 HTTP | 必须满足的数据库结果 |
 | --- | --- | --- |
@@ -84,13 +84,13 @@ Day20 的 100/500 档使用相同入口，seed 的司机数、订单数均至少
 
 | 文件 | 内容 |
 | --- | --- |
-| `logs/day19-verification.json` | 全仓计数、逐套件摘要、真实验收 runId 与整体结果 |
-| `logs/day19-maven.log` | 全仓原始测试日志 |
-| `logs/day19-tools.log` | 工具误判/清理范围回归 |
-| `logs/day19-http-result.json` | 最新真实链路、冒烟目录与清理结果 |
-| `logs/day19/runs/<runId>/verification.json` | 该批真实验收结果，后续运行不会覆盖 |
-| `logs/day19/runs/<runId>/environment.json` | seed 时环境与源码指纹 |
-| `logs/day19/runs/<runId>/load-<UUID>/round-*.jsonl` | 逐请求原始结果 |
+| `logs/step19-verification.json` | 全仓计数、逐套件摘要、真实验收 runId 与整体结果 |
+| `logs/step19-maven.log` | 全仓原始测试日志 |
+| `logs/step19-tools.log` | 工具误判/清理范围回归 |
+| `logs/step19-http-result.json` | 最新真实链路、冒烟目录与清理结果 |
+| `logs/step19/runs/<runId>/verification.json` | 该批真实验收结果，后续运行不会覆盖 |
+| `logs/step19/runs/<runId>/environment.json` | seed 时环境与源码指纹 |
+| `logs/step19/runs/<runId>/load-<UUID>/round-*.jsonl` | 逐请求原始结果 |
 | 同目录 `round-*.json`、`summary.json`、`environment.json` | 每轮最终数据库、计数、耗时、该次运行参数与环境 |
 
-Day19 只验收脚本正确性及重复运行能力；Day20 再完成 10/100/500 每档各 3 轮，Day21 再实现并运行 5 分钟持续创建/MQ 消费测量与监控，不提前宣称这些性能结果。
+Step19 只验收脚本正确性及重复运行能力；Step20 再完成 10/100/500 每档各 3 轮，Step21 再实现并运行 5 分钟持续创建/MQ 消费测量与监控，不提前宣称这些性能结果。

@@ -19,7 +19,7 @@ if (Test-Path -LiteralPath $localEnv) {
     }
 }
 $java = (Get-Command java.exe -ErrorAction Stop).Source
-$runtime = Join-Path $root 'logs/day21-runtime'
+$runtime = Join-Path $root 'logs/step21-runtime'
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
 $entries = @(@('account-service',8081),@('driver-service',8082),@('order-service',8083),@('gateway',8080))
 foreach ($entry in $entries) {

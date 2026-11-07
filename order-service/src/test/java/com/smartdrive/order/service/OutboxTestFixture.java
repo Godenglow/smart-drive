@@ -54,7 +54,7 @@ class OutboxTestFixture implements AutoCloseable {
     }
 
     CreateOrderRequest request() {
-        var place = new Place("Day12-" + UUID.randomUUID(), new BigDecimal("117.215000"), new BigDecimal("39.136000"));
+        var place = new Place("Step12-" + UUID.randomUUID(), new BigDecimal("117.215000"), new BigDecimal("39.136000"));
         return new CreateOrderRequest(UUID.randomUUID(), place, place);
     }
 

@@ -1,4 +1,4 @@
-"""Recompute the Day21 comparison from persisted requests, SQL snapshots and metrics."""
+"""Recompute the Step21 comparison from persisted requests, SQL snapshots and metrics."""
 import argparse
 import hashlib
 import importlib.util
@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 import re
 
-from day19_support import ROOT, require, save, stamp
+from step19_support import ROOT, require, save, stamp
 
-spec = importlib.util.spec_from_file_location('verify_day21', Path(__file__).with_name('verify-day21.py'))
+spec = importlib.util.spec_from_file_location('verify_step21', Path(__file__).with_name('verify-step21.py'))
 load = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(load)
 
@@ -21,7 +21,7 @@ def committed_notifications(directory, phase, database):
     expected = {r['eventId']: r['id'] for r in database}
     rows, sources = [], {}
     pattern = r'Matching committed eventId=([0-9a-f-]+) orderId=(\d+) notificationDelayMs=(\d+) redelivered=(true|false)'
-    for path in (ROOT/'logs/day21-runtime').glob('driver-service-*.out.log'):
+    for path in (ROOT/'logs/step21-runtime').glob('driver-service-*.out.log'):
         raw = path.read_bytes()
         matches = [{'eventId':e, 'orderId':int(o), 'notificationDelayMs':int(d), 'redelivered':r == 'true'}
                    for e,o,d,r in re.findall(pattern, raw.decode('utf-8',errors='replace')) if e in expected]
@@ -31,7 +31,7 @@ def committed_notifications(directory, phase, database):
     require(len(rows) == len(expected) and {r['eventId'] for r in rows} == set(expected)
             and all(expected[r['eventId']] == r['orderId'] and not r['redelivered'] for r in rows),
             'Missing/duplicate/invalid committed notification logs')
-    output = directory/f'day21-{phase}-committed-notifications.json'
+    output = directory/f'step21-{phase}-committed-notifications.json'
     save(output, sorted(rows,key=lambda r:r['orderId']))
     return {'latencyMs':load.percentiles([r['notificationDelayMs'] for r in rows]),
             'records':len(rows), 'rawResults':str(output.relative_to(ROOT)),
@@ -41,15 +41,15 @@ def committed_notifications(directory, phase, database):
 
 def audit(result):
     require(result['passed'] and result['cleanupPassed'] and result['formalFiveMinutes'], 'Incomplete formal run')
-    directory = ROOT / 'logs/day19/runs' / result['runId']
+    directory = ROOT / 'logs/step19/runs' / result['runId']
     phase = result['phase']
     for name, digest in result['evidenceSha256'].items():
         require(Path(name).name == name, 'Invalid evidence path')
         require(hashlib.sha256((directory/name).read_bytes()).hexdigest() == digest, 'Evidence hash mismatch')
     report = result['load']
-    rows = [json.loads(line) for line in (directory/f'day21-{phase}-requests.jsonl').read_text(encoding='utf-8').splitlines()]
-    database = read(directory/f'day21-{phase}-database.json')
-    samples = [json.loads(line) for line in (directory/f'day21-{phase}-metrics.jsonl').read_text(encoding='utf-8').splitlines()]
+    rows = [json.loads(line) for line in (directory/f'step21-{phase}-requests.jsonl').read_text(encoding='utf-8').splitlines()]
+    database = read(directory/f'step21-{phase}-database.json')
+    samples = [json.loads(line) for line in (directory/f'step21-{phase}-metrics.jsonl').read_text(encoding='utf-8').splitlines()]
     samples.sort(key=lambda s: s['offsetSeconds'])
     manifest = read(directory/'manifest.json')
     drivers = [a['id'] for a in manifest['accounts'] if a['role'] == 'DRIVER']
@@ -109,17 +109,17 @@ def audit(result):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', default='logs/day21-comparison.json')
+    parser.add_argument('--output', default='logs/step21-comparison.json')
     args = parser.parse_args()
-    before = audit(read(ROOT/'logs/day21-baseline-result.json'))
-    after = audit(read(ROOT/'logs/day21-tuned-result.json'))
+    before = audit(read(ROOT/'logs/step21-baseline-result.json'))
+    after = audit(read(ROOT/'logs/step21-tuned-result.json'))
     b, a = before['environment'], after['environment']
     require(all(b['load'][k] == a['load'][k] for k in ('duration','rps','workers')), 'Different load parameters')
     require(all(b['runtime'][s]['jarSha256'] == a['runtime'][s]['jarSha256'] for s in b['runtime']), 'Different application JARs')
     require(b['runtime']['order-service']['pollIntervalMs'] == 5000
             and a['runtime']['order-service']['pollIntervalMs'] == 1000, 'Wrong comparison configuration')
     require(b['runtime']['order-service']['batchSize'] == a['runtime']['order-service']['batchSize'] == 50, 'Batch changed')
-    result = {'day':21, 'passed':True, 'auditedAt':stamp(), 'baseline':before, 'tuned':after,
+    result = {'step':21, 'passed':True, 'auditedAt':stamp(), 'baseline':before, 'tuned':after,
               'change':{'outboxPollIntervalMs':{'before':5000,'after':1000}, 'batchSize':50},
               'scope':'Two sequential local five-minute paced runs at identical load; not a maximum capacity benchmark',
               'limitations':['Same host client and services; one run per configuration; JVM/OS warmness differ',

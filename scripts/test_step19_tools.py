@@ -7,9 +7,9 @@ import unittest
 from unittest.mock import patch
 import uuid
 
-import day19_support as support
+import step19_support as support
 
-spec = importlib.util.spec_from_file_location("load_day19", Path(__file__).with_name("load-day19.py"))
+spec = importlib.util.spec_from_file_location("load_step19", Path(__file__).with_name("load-step19.py"))
 load = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(load)
 
@@ -54,7 +54,7 @@ class RaceVerdictTest(unittest.TestCase):
 
 class FixtureSafetyTest(unittest.TestCase):
     def setUp(self):
-        self.temp_root = support.ROOT / "logs/day19/tool-tests"
+        self.temp_root = support.ROOT / "logs/step19/tool-tests"
         self.temp_root.mkdir(parents=True, exist_ok=True)
 
     def test_non_uuid_cannot_select_an_arbitrary_cleanup_directory(self):

@@ -21,7 +21,7 @@ class DriverStateControllerTest {
     @Test void alternateDriverPathsCannotReadOrMutateDriverState() throws Exception {
         var drivers = mock(DriverService.class);
         var notices = mock(OrderNoticeService.class);
-        var jwt = new JwtCodec("day17-test-secret-at-least-thirty-two-bytes", new ObjectMapper(), java.time.Clock.systemUTC());
+        var jwt = new JwtCodec("step17-test-secret-at-least-thirty-two-bytes", new ObjectMapper(), java.time.Clock.systemUTC());
         var mvc = MockMvcBuilders.standaloneSetup(new DriverController(drivers, notices))
                 .addFilters(new ServletAuthFilter(jwt, new ObjectMapper())).build();
         String passenger = jwt.issue(17, "PASSENGER", Instant.now().plusSeconds(3600));
@@ -38,7 +38,7 @@ class DriverStateControllerTest {
 
     @Test void stateUsesJwtIdentityAndRejectsOtherRoles() throws Exception {
         var drivers = mock(DriverService.class);
-        var jwt = new JwtCodec("day17-test-secret-at-least-thirty-two-bytes", new ObjectMapper(), java.time.Clock.systemUTC());
+        var jwt = new JwtCodec("step17-test-secret-at-least-thirty-two-bytes", new ObjectMapper(), java.time.Clock.systemUTC());
         var mvc = MockMvcBuilders.standaloneSetup(new DriverController(drivers, mock(OrderNoticeService.class)))
                 .addFilters(new ServletAuthFilter(jwt, new ObjectMapper())).build();
         when(drivers.state(42)).thenReturn(new DriverStateView(null, false));

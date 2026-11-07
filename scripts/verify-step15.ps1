@@ -11,21 +11,21 @@ if (Test-Path $localEnv) {
         }
     }
 }
-$createdFile = Join-Path $projectRoot 'logs/day15-created-accounts.jsonl'
+$createdFile = Join-Path $projectRoot 'logs/step15-created-accounts.jsonl'
 $oldMysqlPassword = $env:MYSQL_PWD
 $oldLive = $env:SMARTDRIVE_LIVE_TEST
 $oldOutput = $env:PLAYWRIGHT_JSON_OUTPUT
 $dbUser = if ($env:SMARTDRIVE_DB_USER) { $env:SMARTDRIVE_DB_USER } else { 'smartdrive' }
 $env:MYSQL_PWD = $env:SMARTDRIVE_DB_PASSWORD
 $env:SMARTDRIVE_LIVE_TEST = if ($Live) { 'true' } else { 'false' }
-$env:PLAYWRIGHT_JSON_OUTPUT = '../logs/day15-browser-results.json'
+$env:PLAYWRIGHT_JSON_OUTPUT = '../logs/step15-browser-results.json'
 $testPassed = $false
 $cleanupErrors = [Collections.Generic.List[string]]::new()
 $accountsVerified = 0
-$reportPath = Join-Path $projectRoot 'logs/day15-verification.json'
+$reportPath = Join-Path $projectRoot 'logs/step15-verification.json'
 function Sql([string]$statement) {
     $result = & mysql.exe --host=127.0.0.1 "--user=$dbUser" --batch --skip-column-names "--execute=$statement"
-    if ($LASTEXITCODE -ne 0) { throw 'Day15 SQL failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'Step15 SQL failed' }
     return $result
 }
 Push-Location (Join-Path $projectRoot 'web-app')
@@ -34,7 +34,7 @@ try {
     & npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw '前端构建失败' }
     & npm.cmd test -- --project=chromium --project=mobile --project=live
-    if ($LASTEXITCODE -ne 0) { throw '浏览器验收失败，见 logs/day15-browser-results.json' }
+    if ($LASTEXITCODE -ne 0) { throw '浏览器验收失败，见 logs/step15-browser-results.json' }
     $testPassed = $true
 } finally {
     Pop-Location

@@ -6,10 +6,10 @@ import unittest
 import tempfile
 from unittest.mock import patch
 
-spec = importlib.util.spec_from_file_location('day21', Path(__file__).with_name('verify-day21.py'))
-day21 = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(day21)
-audit_spec = importlib.util.spec_from_file_location('audit_day21', Path(__file__).with_name('audit-day21.py'))
+spec = importlib.util.spec_from_file_location('step21', Path(__file__).with_name('verify-step21.py'))
+step21 = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(step21)
+audit_spec = importlib.util.spec_from_file_location('audit_step21', Path(__file__).with_name('audit-step21.py'))
 audit = importlib.util.module_from_spec(audit_spec)
 audit_spec.loader.exec_module(audit)
 
@@ -24,7 +24,7 @@ class SustainedEvidenceTest(unittest.TestCase):
                         attempts=1, noticeDrivers='8,9', notificationDelayMs=20) for i in range(2)]
 
     def passed(self):
-        return day21.judge(self.rows, self.db, 2, [9,8])['passed']
+        return step21.judge(self.rows, self.db, 2, [9,8])['passed']
 
     def test_exact_evidence_passes(self):
         self.assertTrue(self.passed())
@@ -76,20 +76,20 @@ class SustainedEvidenceTest(unittest.TestCase):
         self.assertFalse(self.passed())
 
     def test_percentiles_use_nearest_rank(self):
-        self.assertEqual({'p50':50,'p95':95,'p99':99,'max':100}, day21.percentiles(list(range(1,101))))
-        self.assertIsNone(day21.percentiles([])['p99'])
+        self.assertEqual({'p50':50,'p95':95,'p99':99,'max':100}, step21.percentiles(list(range(1,101))))
+        self.assertIsNone(step21.percentiles([])['p99'])
 
 
 class CommittedLogEvidenceTest(unittest.TestCase):
     event = '00000000-0000-0000-0000-000000000001'
 
     def check(self, lines):
-        base = day21.ROOT/'logs/day21/tool-tests'
+        base = step21.ROOT/'logs/step21/tool-tests'
         base.mkdir(parents=True,exist_ok=True)
         with tempfile.TemporaryDirectory(dir=base) as directory, patch.object(audit,'ROOT',Path(directory)):
             root = Path(directory)
-            (root/'logs/day21-runtime').mkdir(parents=True)
-            (root/'logs/day21-runtime/driver-service-test.out.log').write_text('\n'.join(lines))
+            (root/'logs/step21-runtime').mkdir(parents=True)
+            (root/'logs/step21-runtime/driver-service-test.out.log').write_text('\n'.join(lines))
             return audit.committed_notifications(root,'baseline',[dict(eventId=self.event,id=7)])
 
     def line(self, order=7, redelivered='false'):

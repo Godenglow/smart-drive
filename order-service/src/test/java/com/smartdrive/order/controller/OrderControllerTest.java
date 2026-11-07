@@ -35,7 +35,7 @@ class OrderControllerTest {
     private final OrderMapper orders = mock(OrderMapper.class);
     private final NearbyDriverClient nearby = mock(NearbyDriverClient.class);
     private final ObjectMapper json = new ObjectMapper();
-    private final JwtCodec jwt = new JwtCodec("day9-test-secret-longer-than-thirty-two-bytes", json, Clock.systemUTC());
+    private final JwtCodec jwt = new JwtCodec("step9-test-secret-longer-than-thirty-two-bytes", json, Clock.systemUTC());
     private MockMvc mvc;
     private String passenger;
 

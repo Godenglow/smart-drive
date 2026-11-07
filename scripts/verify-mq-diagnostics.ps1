@@ -12,7 +12,7 @@ $url = if ($env:RABBITMQ_MANAGEMENT_URL) { $env:RABBITMQ_MANAGEMENT_URL.TrimEnd(
 $user = if ($env:RABBITMQ_USER) { $env:RABBITMQ_USER } else { 'guest' }
 $password = if ($env:RABBITMQ_PASSWORD) { $env:RABBITMQ_PASSWORD } else { 'guest' }
 $headers = @{Authorization='Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${user}:$password"))}
-$vhost = 'smartdrive-day14-diagnostics-' + [Guid]::NewGuid().ToString()
+$vhost = 'smartdrive-step14-diagnostics-' + [Guid]::NewGuid().ToString()
 $eventId = [Guid]::NewGuid().ToString()
 function Mq($method,$path,$body=$null) {
     $options=@{Method=$method;Uri="$url$path";Headers=$headers;TimeoutSec=15}
@@ -48,9 +48,9 @@ try {
     Check ($target[0].properties.message_id -eq $eventId) 'Replay changed message identity'
     Check ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($target[0].payload)) -ceq $payload) 'Replay changed original body'
     [pscustomobject]@{time=(Get-Date -Format 'yyyy-MM-ddTHH:mm:sszzz');eventId=$eventId;deadLettersLocated=2;originalsRetained=2;replaysRouted=1;identityAndBodyPreserved=$true;xDeathLocated=$true} |
-        ConvertTo-Json | Set-Content (Join-Path $root 'logs/day14-diagnostics-result.json')
-    Get-Content (Join-Path $root 'logs/day14-diagnostics-result.json')
+        ConvertTo-Json | Set-Content (Join-Path $root 'logs/step14-diagnostics-result.json')
+    Get-Content (Join-Path $root 'logs/step14-diagnostics-result.json')
 } finally {
-    Check ($vhost.StartsWith('smartdrive-day14-diagnostics-')) 'Unsafe cleanup target'
+    Check ($vhost.StartsWith('smartdrive-step14-diagnostics-')) 'Unsafe cleanup target'
     $null=Mq Delete "/api/vhosts/$vhost"
 }

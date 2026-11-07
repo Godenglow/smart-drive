@@ -8,6 +8,6 @@ for (const [path, name] of [['/driver', 'dashboard'], ['/driver/profile', 'profi
     if (name === 'dashboard') await expect(page.getByRole('button', { name: '上线接单' })).toBeEnabled()
     if (name === 'detail') await expect(page.getByRole('button', { name: '抢单', exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await page.screenshot({ path: `../logs/day17-mobile-${name}.png`, fullPage: true })
+    await page.screenshot({ path: `../logs/step17-mobile-${name}.png`, fullPage: true })
   })
 }

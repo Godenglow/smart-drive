@@ -1,6 +1,6 @@
 # SmartDrive Web
 
-Vue 3 + TypeScript + Vite + Vue Router。已完成 Day15 注册登录、Day16 乘客订单、Day17 司机页面及 Day18 双角色全流程、冲突同步与录制。
+Vue 3 + TypeScript + Vite + Vue Router。已完成 Step15 注册登录、Step16 乘客订单、Step17 司机页面及 Step18 双角色全流程、冲突同步与录制。
 
 ## 本地启动
 
@@ -40,12 +40,12 @@ npm.cmd run build              # TypeScript 检查 + 生产构建
 npm.cmd test                   # 74 项模拟/移动端测试；真实测试默认跳过
 npm.cmd exec playwright install ffmpeg  # 首次录制前安装
 cd ..
-pwsh -NoProfile -File scripts/verify-day18.ps1 -Live
+pwsh -NoProfile -File scripts/verify-step18.ps1 -Live
 ```
 
-Day17 脚本读取项目根 `.env.local`，执行构建和 69 项测试（44 项 Day15/16 回归、24 项司机模拟/移动测试、1 项真实司机链路）。司机业务操作全部通过浏览器完成，乘客下单/模拟支付通过 API 夹具完成；两个临时账号 BCrypt、一笔 PAID 订单、司机归属与占用释放及事件消费核对后，仅清理本次数据。需要四个服务、MySQL、Redis、RabbitMQ、Nacos、`mysql.exe`、`SMARTDRIVE_DB_PASSWORD`、RabbitMQ 管理 API 和本机 Chrome。可设置 `PLAYWRIGHT_CHANNEL=msedge`；截图与 JSON 报告位于根目录 `logs/day17-*`。移动测试使用 Chromium 设备模拟，未测真实 iOS Safari。Day15/16 验收脚本保留，可单独重跑此前的真实乘客链路。
+Step17 脚本读取项目根 `.env.local`，执行构建和 69 项测试（44 项 Step15/16 回归、24 项司机模拟/移动测试、1 项真实司机链路）。司机业务操作全部通过浏览器完成，乘客下单/模拟支付通过 API 夹具完成；两个临时账号 BCrypt、一笔 PAID 订单、司机归属与占用释放及事件消费核对后，仅清理本次数据。需要四个服务、MySQL、Redis、RabbitMQ、Nacos、`mysql.exe`、`SMARTDRIVE_DB_PASSWORD`、RabbitMQ 管理 API 和本机 Chrome。可设置 `PLAYWRIGHT_CHANNEL=msedge`；截图与 JSON 报告位于根目录 `logs/step17-*`。移动测试使用 Chromium 设备模拟，未测真实 iOS Safari。Step15/16 验收脚本保留，可单独重跑此前的真实乘客链路。
 
-Day18 脚本沿用上述环境，执行生产构建与 75 项测试（68 项既有回归、6 项同步竞态测试、1 项真实三会话链路）。使用独立乘客和两位司机会话，业务操作全部通过页面：取消、MQ 卡片、同时抢单、开始/完成、模拟支付、历史和离线，包含重复点击及每阶段刷新。临时账号由 API 夹具创建；不拦截真实 API，不预设竞争赢家。核对 3 账号、2 订单、候选通知、占用释放与事件消费后精确清理。录屏保存为 `logs/day18-passenger.webm`、`day18-driver-a.webm`、`day18-driver-b.webm`，其余证据见 `logs/day18-*`。未加 `-Live` 时真实测试明确跳过；未清理的账号清单会阻止下一次真实验收。
+Step18 脚本沿用上述环境，执行生产构建与 75 项测试（68 项既有回归、6 项同步竞态测试、1 项真实三会话链路）。使用独立乘客和两位司机会话，业务操作全部通过页面：取消、MQ 卡片、同时抢单、开始/完成、模拟支付、历史和离线，包含重复点击及每阶段刷新。临时账号由 API 夹具创建；不拦截真实 API，不预设竞争赢家。核对 3 账号、2 订单、候选通知、占用释放与事件消费后精确清理。录屏保存为 `logs/step18-passenger.webm`、`step18-driver-a.webm`、`step18-driver-b.webm`，其余证据见 `logs/step18-*`。未加 `-Live` 时真实测试明确跳过；未清理的账号清单会阻止下一次真实验收。
 
 订单写失败后立即重新读取服务端状态；同步未成功时显示结果待确认并禁止后续动作，可通过“刷新状态”恢复。旧轮询的返回值与网络错误都不能覆盖新操作。`npm.cmd test -- --project=journey` 可单独复现这些模拟时序。
 

@@ -1,4 +1,4 @@
--- Day 6: driver-service 资料库；账号与密码通过本机私有配置提供。
+-- Step 6: driver-service 资料库；账号与密码通过本机私有配置提供。
 CREATE DATABASE IF NOT EXISTS driver_db CHARACTER SET utf8mb4;
 
 CREATE TABLE IF NOT EXISTS driver_db.driver_profile (
@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS driver_db.driver_profile (
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 );
 
--- Day 10/13: MQ 消费者写入的候选资格；重复通知不覆盖已有状态。
+-- Step 10/13: MQ 消费者写入的候选资格；重复通知不覆盖已有状态。
 CREATE TABLE IF NOT EXISTS driver_db.order_notice (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   order_id BIGINT NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS driver_db.order_notice (
   KEY idx_driver_status (driver_id, status, created_at)
 );
 
--- Day 13: 与该单全部通知同事务提交，重投时不再重新匹配其他司机。
+-- Step 13: 与该单全部通知同事务提交，重投时不再重新匹配其他司机。
 CREATE TABLE IF NOT EXISTS driver_db.processed_order_event (
   order_id BIGINT PRIMARY KEY,
   event_id VARCHAR(36) NOT NULL,

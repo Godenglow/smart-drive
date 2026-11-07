@@ -88,7 +88,7 @@ class AccountMySqlIntegrationTest {
     }
 
     static class Fixture implements AutoCloseable {
-        static final String KEY = "day19-test-key-longer-than-thirty-two-bytes";
+        static final String KEY = "step19-test-key-longer-than-thirty-two-bytes";
         // Not an API request: a UUID in the phone column isolates mapper-level tests from real accounts.
         final String phone = "it-" + UUID.randomUUID().toString().replace("-", "").substring(0, 28);
         final String password = UUID.randomUUID().toString();

@@ -7,10 +7,10 @@ import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
-import day19_support as support
-from day19_support import ROOT, save
+import step19_support as support
+from step19_support import ROOT, save
 
-spec = importlib.util.spec_from_file_location("verify_day20", Path(__file__).with_name("verify-day20.py"))
+spec = importlib.util.spec_from_file_location("verify_step20", Path(__file__).with_name("verify-step20.py"))
 verify = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verify)
 
@@ -44,7 +44,7 @@ class MatrixEvidenceTest(unittest.TestCase):
                 "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
 
     def audit_modified(self, modify=None):
-        parent = ROOT / "logs/day20/tool-tests"
+        parent = ROOT / "logs/step20/tool-tests"
         parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=parent) as name:
             directory = Path(name)
@@ -81,7 +81,7 @@ class MatrixLifecycleTest(unittest.TestCase):
     def run_main(self, run_error=None, cleanup_error=None):
         fixture = MagicMock()
         fixture.run_id = "test-run"
-        fixture.directory = ROOT / "logs/day20/mock-run"
+        fixture.directory = ROOT / "logs/step20/mock-run"
         fixture.data = {"cleanupVerified": cleanup_error is None}
         if cleanup_error:
             fixture.cleanup.side_effect = cleanup_error
