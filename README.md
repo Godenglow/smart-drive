@@ -48,8 +48,4 @@ npm.cmd run dev
 
 访问 [本地页面](http://127.0.0.1:5173)，注册乘客和司机账号即可体验。下单前，上车点 5 km 内需要有在线司机。
 
-## 验证与说明
-
-- 后端测试：`mvn.cmd test`
-- 前端构建：在 `web-app/` 执行 `npm.cmd run build`
-- [前端说明](web-app/README.md) · [演示与验收指南](scripts/STEP22.md)
+更多前端配置见 [前端说明](web-app/README.md)。

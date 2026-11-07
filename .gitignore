@@ -35,3 +35,18 @@ application-local.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# 本地测试、验收与演示工具（保留文件，不提交）
+/scripts/*
+!/scripts/start-local.ps1
+!/scripts/runtime-support.ps1
+**/src/test/
+/web-app/tests/
+/web-app/playwright.config.ts
+
+# 本机工作目录
+/.workbuddy/
+/.codebuddy/
+/output/
+/tmp/
+/项目文档/
